@@ -1,0 +1,49 @@
+name: 'AI Commit Context'
+description: 'Annotate pull requests with AI conversation context from Claude Code sessions'
+author: 'AI Commit Context'
+
+branding:
+  icon: 'message-circle'
+  color: 'purple'
+
+inputs:
+  github-token:
+    description: 'GitHub token for API access'
+    required: true
+    default: ${{ github.token }}
+
+  api-url:
+    description: 'AI Commit Context API URL'
+    required: false
+    default: 'https://api.aicommitcontext.dev'
+
+  api-token:
+    description: 'API token for authentication (optional)'
+    required: false
+    default: ''
+
+  comment-mode:
+    description: 'How to handle PR comments: create, update, or none'
+    required: false
+    default: 'update'
+
+  show-excerpts:
+    description: 'Show conversation excerpts in the comment'
+    required: false
+    default: 'true'
+
+  trailer-key:
+    description: 'Git trailer key to look for'
+    required: false
+    default: 'AI-Context-ID'
+
+outputs:
+  sessions-found:
+    description: 'Number of AI sessions found in the PR'
+
+  comment-url:
+    description: 'URL of the created/updated PR comment'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

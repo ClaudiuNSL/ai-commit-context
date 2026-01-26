@@ -1,0 +1,46 @@
+# AI Commit Context - Example GitHub Workflow
+# Copy this file to .github/workflows/ai-context.yml in your repository
+
+name: AI Commit Context
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  annotate-pr:
+    name: Annotate PR with AI Context
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout with full history to access all commits
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Run the AI Commit Context action
+      - name: Add AI context to PR
+        uses: ai-commit-context/action@v1
+        id: ai-context
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+          # Uncomment for self-hosted server:
+          # api-url: ${{ vars.ACC_API_URL }}
+          # api-token: ${{ secrets.ACC_API_TOKEN }}
+
+          # Options:
+          comment-mode: update      # create | update | none
+          show-excerpts: true       # Show conversation previews
+          trailer-key: AI-Context-ID
+
+      # Optional: Output results
+      - name: Show results
+        run: |
+          echo "Sessions found: ${{ steps.ai-context.outputs.sessions-found }}"
+          echo "Comment URL: ${{ steps.ai-context.outputs.comment-url }}"
