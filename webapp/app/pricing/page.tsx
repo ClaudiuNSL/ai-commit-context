@@ -5,10 +5,10 @@ import { PLANS, PlanType } from '@/lib/stripe'
 import { Check, ArrowLeft, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { supabase } from '@/lib/supabase'
 
-export default function PricingPage() {
+function PricingContent() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -204,5 +204,17 @@ export default function PricingPage() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-sky-400" />
+      </div>
+    }>
+      <PricingContent />
+    </Suspense>
   )
 }

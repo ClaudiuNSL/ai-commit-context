@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/lib/auth-context'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { supabase } from '@/lib/supabase'
 import { PLANS, PlanType } from '@/lib/stripe'
 import {
@@ -36,7 +36,7 @@ interface Subscription {
   cancel_at_period_end: boolean
 }
 
-export default function DashboardPage() {
+function DashboardContent() {
   const { user, loading, signOut } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -344,5 +344,17 @@ export default function DashboardPage() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-sky-400" />
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
   )
 }
