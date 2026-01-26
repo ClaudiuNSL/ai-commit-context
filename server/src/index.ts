@@ -1,8 +1,8 @@
 import express from 'express';
 import cors from 'cors';
-import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { nanoid } from 'nanoid';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -11,35 +11,29 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3456;
 
-// Data storage
+// Supabase client
+const supabaseUrl = process.env.SUPABASE_URL || '';
+const supabaseKey = process.env.SUPABASE_ANON_KEY || '';
+
+let supabase: SupabaseClient | null = null;
+
+if (supabaseUrl && supabaseKey) {
+  supabase = createClient(supabaseUrl, supabaseKey);
+  console.log('✓ Connected to Supabase');
+} else {
+  console.log('⚠ Supabase not configured - running in local mode');
+}
+
+// Fallback local storage (when Supabase is not configured)
+import fs from 'fs';
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
 
-// Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// Types
-interface Message {
-  uuid: string;
-  parentUuid: string | null;
-  timestamp: string;
-  type: 'user' | 'assistant';
-  message: {
-    role: string;
-    content: string | ContentBlock[];
-  };
-}
-
-interface ContentBlock {
-  type: string;
-  text?: string;
-  name?: string;
-  input?: unknown;
-}
-
-interface StoredSession {
+interface LocalSession {
   id: string;
   shortCode: string;
   projectName: string;
@@ -47,27 +41,17 @@ interface StoredSession {
   startedAt: string;
   endedAt: string | null;
   messageCount: number;
-  messages: Message[];
+  messages: unknown[];
   filesModified: string[];
-  commits: CommitLink[];
+  commits: { sha: string; repoUrl: string; message: string; linkedAt: string }[];
 }
 
-interface CommitLink {
-  sha: string;
-  repoUrl: string;
-  message: string;
-  linkedAt: string;
+interface LocalStore {
+  sessions: Record<string, LocalSession>;
 }
 
-interface SessionsStore {
-  sessions: Record<string, StoredSession>;
-}
-
-// Load/save sessions
-function loadSessions(): SessionsStore {
-  if (!fs.existsSync(SESSIONS_FILE)) {
-    return { sessions: {} };
-  }
+function loadLocalSessions(): LocalStore {
+  if (!fs.existsSync(SESSIONS_FILE)) return { sessions: {} };
   try {
     return JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf-8'));
   } catch {
@@ -75,15 +59,13 @@ function loadSessions(): SessionsStore {
   }
 }
 
-function saveSessions(store: SessionsStore): void {
+function saveLocalSessions(store: LocalStore): void {
   fs.writeFileSync(SESSIONS_FILE, JSON.stringify(store, null, 2));
 }
 
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
-
-// Serve static web files
 app.use(express.static(path.join(__dirname, '..', '..', 'web')));
 
 // =============================================================================
@@ -92,11 +74,15 @@ app.use(express.static(path.join(__dirname, '..', '..', 'web')));
 
 // Health check
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', version: '0.1.0' });
+  res.json({
+    status: 'ok',
+    version: '0.1.0',
+    database: supabase ? 'supabase' : 'local'
+  });
 });
 
 // Upload session
-app.post('/api/sessions', (req, res) => {
+app.post('/api/sessions', async (req, res) => {
   try {
     const { sessionId, projectName, startedAt, endedAt, messages, filesModified } = req.body;
 
@@ -105,33 +91,62 @@ app.post('/api/sessions', (req, res) => {
       return;
     }
 
-    const store = loadSessions();
     const shortCode = nanoid(8);
-
-    const session: StoredSession = {
-      id: sessionId,
-      shortCode,
-      projectName: projectName || 'Unknown Project',
-      uploadedAt: new Date().toISOString(),
-      startedAt: startedAt || new Date().toISOString(),
-      endedAt: endedAt || null,
-      messageCount: messages.length,
-      messages,
-      filesModified: filesModified || [],
-      commits: [],
-    };
-
-    store.sessions[sessionId] = session;
-    saveSessions(store);
-
     const baseUrl = process.env.BASE_URL || `http://localhost:${PORT}`;
 
-    res.json({
-      success: true,
-      id: sessionId,
-      shortCode,
-      url: `${baseUrl}/c/${shortCode}`,
-    });
+    if (supabase) {
+      // Use Supabase
+      const { data, error } = await supabase
+        .from('sessions')
+        .insert({
+          short_code: shortCode,
+          project_name: projectName || 'Unknown Project',
+          started_at: startedAt || new Date().toISOString(),
+          ended_at: endedAt || null,
+          message_count: messages.length,
+          messages: messages,
+          files_modified: filesModified || [],
+          privacy: 'unlisted'
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase error:', error);
+        res.status(500).json({ error: 'Failed to upload session' });
+        return;
+      }
+
+      res.json({
+        success: true,
+        id: data.id,
+        shortCode: data.short_code,
+        url: `${baseUrl}/c/${data.short_code}`,
+      });
+    } else {
+      // Use local storage
+      const store = loadLocalSessions();
+      store.sessions[sessionId] = {
+        id: sessionId,
+        shortCode,
+        projectName: projectName || 'Unknown Project',
+        uploadedAt: new Date().toISOString(),
+        startedAt: startedAt || new Date().toISOString(),
+        endedAt: endedAt || null,
+        messageCount: messages.length,
+        messages,
+        filesModified: filesModified || [],
+        commits: [],
+      };
+      saveLocalSessions(store);
+
+      res.json({
+        success: true,
+        id: sessionId,
+        shortCode,
+        url: `${baseUrl}/c/${shortCode}`,
+      });
+    }
   } catch (error) {
     console.error('Upload error:', error);
     res.status(500).json({ error: 'Failed to upload session' });
@@ -139,25 +154,63 @@ app.post('/api/sessions', (req, res) => {
 });
 
 // Get session by short code
-app.get('/api/sessions/:code', (req, res) => {
+app.get('/api/sessions/:code', async (req, res) => {
   const { code } = req.params;
-  const store = loadSessions();
 
-  // Find by short code or full ID
-  const session = Object.values(store.sessions).find(
-    s => s.shortCode === code || s.id === code || s.id.startsWith(code)
-  );
+  try {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('*')
+        .eq('short_code', code)
+        .single();
 
-  if (!session) {
-    res.status(404).json({ error: 'Session not found' });
-    return;
+      if (error || !data) {
+        res.status(404).json({ error: 'Session not found' });
+        return;
+      }
+
+      // Get linked commits
+      const { data: commitLinks } = await supabase
+        .from('session_commits')
+        .select('commits(*)')
+        .eq('session_id', data.id);
+
+      const commits = commitLinks?.map((link: { commits: unknown }) => link.commits) || [];
+
+      res.json({
+        id: data.id,
+        shortCode: data.short_code,
+        projectName: data.project_name,
+        uploadedAt: data.created_at,
+        startedAt: data.started_at,
+        endedAt: data.ended_at,
+        messageCount: data.message_count,
+        messages: data.messages,
+        filesModified: data.files_modified,
+        commits
+      });
+    } else {
+      const store = loadLocalSessions();
+      const session = Object.values(store.sessions).find(
+        s => s.shortCode === code || s.id === code || s.id.startsWith(code)
+      );
+
+      if (!session) {
+        res.status(404).json({ error: 'Session not found' });
+        return;
+      }
+
+      res.json(session);
+    }
+  } catch (error) {
+    console.error('Error fetching session:', error);
+    res.status(500).json({ error: 'Failed to fetch session' });
   }
-
-  res.json(session);
 });
 
 // Link commit to session
-app.post('/api/sessions/:code/commits', (req, res) => {
+app.post('/api/sessions/:code/commits', async (req, res) => {
   const { code } = req.params;
   const { sha, repoUrl, message } = req.body;
 
@@ -166,70 +219,192 @@ app.post('/api/sessions/:code/commits', (req, res) => {
     return;
   }
 
-  const store = loadSessions();
-  const session = Object.values(store.sessions).find(
-    s => s.shortCode === code || s.id === code || s.id.startsWith(code)
-  );
+  try {
+    if (supabase) {
+      // Get session
+      const { data: session } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('short_code', code)
+        .single();
 
-  if (!session) {
-    res.status(404).json({ error: 'Session not found' });
-    return;
+      if (!session) {
+        res.status(404).json({ error: 'Session not found' });
+        return;
+      }
+
+      // Insert or get commit
+      const { data: commit } = await supabase
+        .from('commits')
+        .upsert({
+          sha,
+          repo_url: repoUrl || '',
+          message: message || ''
+        }, { onConflict: 'sha,repo_url' })
+        .select()
+        .single();
+
+      if (commit) {
+        // Link session to commit
+        await supabase
+          .from('session_commits')
+          .upsert({
+            session_id: session.id,
+            commit_id: commit.id
+          });
+      }
+
+      res.json({ success: true });
+    } else {
+      const store = loadLocalSessions();
+      const session = Object.values(store.sessions).find(
+        s => s.shortCode === code || s.id === code
+      );
+
+      if (!session) {
+        res.status(404).json({ error: 'Session not found' });
+        return;
+      }
+
+      session.commits.push({
+        sha,
+        repoUrl: repoUrl || '',
+        message: message || '',
+        linkedAt: new Date().toISOString(),
+      });
+
+      saveLocalSessions(store);
+      res.json({ success: true, commits: session.commits });
+    }
+  } catch (error) {
+    console.error('Error linking commit:', error);
+    res.status(500).json({ error: 'Failed to link commit' });
   }
-
-  session.commits.push({
-    sha,
-    repoUrl: repoUrl || '',
-    message: message || '',
-    linkedAt: new Date().toISOString(),
-  });
-
-  saveSessions(store);
-
-  res.json({ success: true, commits: session.commits });
 });
 
 // Get context for a commit
-app.get('/api/commits/:sha/context', (req, res) => {
+app.get('/api/commits/:sha/context', async (req, res) => {
   const { sha } = req.params;
-  const store = loadSessions();
 
-  const sessions = Object.values(store.sessions).filter(
-    s => s.commits.some(c => c.sha === sha || c.sha.startsWith(sha))
-  );
+  try {
+    if (supabase) {
+      const { data: commits } = await supabase
+        .from('commits')
+        .select('id')
+        .or(`sha.eq.${sha},sha.like.${sha}%`);
 
-  res.json({
-    commitSha: sha,
-    sessions: sessions.map(s => ({
-      id: s.id,
-      shortCode: s.shortCode,
-      url: `${process.env.BASE_URL || `http://localhost:${PORT}`}/c/${s.shortCode}`,
-      projectName: s.projectName,
-      messageCount: s.messageCount,
-      startedAt: s.startedAt,
-    })),
-  });
+      if (!commits || commits.length === 0) {
+        res.json({ commitSha: sha, sessions: [] });
+        return;
+      }
+
+      const commitIds = commits.map(c => c.id);
+
+      const { data: links } = await supabase
+        .from('session_commits')
+        .select('sessions(*)')
+        .in('commit_id', commitIds);
+
+      const baseUrl = process.env.BASE_URL || `http://localhost:${PORT}`;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sessions = links?.map((link: any) => ({
+        id: link.sessions.id,
+        shortCode: link.sessions.short_code,
+        url: `${baseUrl}/c/${link.sessions.short_code}`,
+        projectName: link.sessions.project_name,
+        messageCount: link.sessions.message_count,
+        startedAt: link.sessions.started_at,
+      })) || [];
+
+      res.json({ commitSha: sha, sessions });
+    } else {
+      const store = loadLocalSessions();
+      const baseUrl = process.env.BASE_URL || `http://localhost:${PORT}`;
+
+      const sessions = Object.values(store.sessions)
+        .filter(s => s.commits.some(c => c.sha === sha || c.sha.startsWith(sha)))
+        .map(s => ({
+          id: s.id,
+          shortCode: s.shortCode,
+          url: `${baseUrl}/c/${s.shortCode}`,
+          projectName: s.projectName,
+          messageCount: s.messageCount,
+          startedAt: s.startedAt,
+        }));
+
+      res.json({ commitSha: sha, sessions });
+    }
+  } catch (error) {
+    console.error('Error fetching commit context:', error);
+    res.status(500).json({ error: 'Failed to fetch commit context' });
+  }
 });
 
 // List all sessions
-app.get('/api/sessions', (_req, res) => {
-  const store = loadSessions();
+app.get('/api/sessions', async (_req, res) => {
+  try {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('session_summaries')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
 
-  const sessions = Object.values(store.sessions)
-    .map(s => ({
-      id: s.id,
-      shortCode: s.shortCode,
-      projectName: s.projectName,
-      messageCount: s.messageCount,
-      uploadedAt: s.uploadedAt,
-      startedAt: s.startedAt,
-      commitsCount: s.commits.length,
-    }))
-    .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+      if (error) {
+        // Fallback to sessions table if view doesn't exist
+        const { data: sessions } = await supabase
+          .from('sessions')
+          .select('id, short_code, project_name, message_count, created_at, started_at')
+          .order('created_at', { ascending: false })
+          .limit(50);
 
-  res.json({ sessions });
+        res.json({
+          sessions: sessions?.map(s => ({
+            id: s.id,
+            shortCode: s.short_code,
+            projectName: s.project_name,
+            messageCount: s.message_count,
+            uploadedAt: s.created_at,
+            startedAt: s.started_at,
+          })) || []
+        });
+        return;
+      }
+
+      res.json({
+        sessions: data?.map(s => ({
+          id: s.id,
+          shortCode: s.short_code,
+          projectName: s.project_name,
+          messageCount: s.message_count,
+          uploadedAt: s.created_at,
+          startedAt: s.started_at,
+          commitCount: s.commit_count
+        })) || []
+      });
+    } else {
+      const store = loadLocalSessions();
+      const sessions = Object.values(store.sessions)
+        .map(s => ({
+          id: s.id,
+          shortCode: s.shortCode,
+          projectName: s.projectName,
+          messageCount: s.messageCount,
+          uploadedAt: s.uploadedAt,
+          startedAt: s.startedAt,
+          commitsCount: s.commits.length,
+        }))
+        .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+
+      res.json({ sessions });
+    }
+  } catch (error) {
+    console.error('Error listing sessions:', error);
+    res.status(500).json({ error: 'Failed to list sessions' });
+  }
 });
 
-// Serve web viewer for any /c/:code route
+// Serve web viewer
 app.get('/c/:code', (_req, res) => {
   res.sendFile(path.join(__dirname, '..', '..', 'web', 'index.html'));
 });
@@ -244,6 +419,7 @@ app.listen(PORT, () => {
 ║   Local:    http://localhost:${PORT}                        ║
 ║   API:      http://localhost:${PORT}/api                    ║
 ║   Viewer:   http://localhost:${PORT}/c/{code}               ║
+║   Database: ${supabase ? 'Supabase' : 'Local JSON'}                             ║
 ║                                                           ║
 ╚═══════════════════════════════════════════════════════════╝
   `);

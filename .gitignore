@@ -38,3 +38,7 @@ server/data/
 server/dist/
 github-action/dist/
 github-action/lib/
+
+# Next.js
+webapp/.next/
+webapp/out/
