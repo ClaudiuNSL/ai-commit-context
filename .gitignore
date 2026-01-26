@@ -30,3 +30,11 @@ coverage/
 package-lock.json
 yarn.lock
 pnpm-lock.yaml
+
+# Server data (contains uploaded sessions)
+server/data/
+
+# Build outputs in subfolders
+server/dist/
+github-action/dist/
+github-action/lib/
