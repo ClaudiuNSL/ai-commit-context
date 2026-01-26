@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe, PLANS, PlanType } from '@/lib/stripe'
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already has a Stripe customer ID
-    const { data: subscription } = await supabaseAdmin
+    const { data: subscription } = await getSupabaseAdmin()
       .from('subscriptions')
       .select('stripe_customer_id')
       .eq('user_id', userId)
@@ -46,7 +41,7 @@ export async function POST(request: NextRequest) {
       customerId = customer.id
 
       // Update subscription with customer ID
-      await supabaseAdmin
+      await getSupabaseAdmin()
         .from('subscriptions')
         .update({ stripe_customer_id: customerId })
         .eq('user_id', userId)

@@ -1,18 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import Stripe from 'stripe'
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
 export async function POST(request: NextRequest) {
   const body = await request.text()
   const signature = request.headers.get('stripe-signature')!
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
   let event: Stripe.Event
 
@@ -31,7 +25,7 @@ export async function POST(request: NextRequest) {
         const plan = session.metadata?.plan
 
         if (userId && plan) {
-          await supabaseAdmin
+          await getSupabaseAdmin()
             .from('subscriptions')
             .update({
               stripe_subscription_id: session.subscription as string,
@@ -48,14 +42,14 @@ export async function POST(request: NextRequest) {
         const customerId = subscription.customer as string
 
         // Find user by customer ID
-        const { data: sub } = await supabaseAdmin
+        const { data: sub } = await getSupabaseAdmin()
           .from('subscriptions')
           .select('user_id')
           .eq('stripe_customer_id', customerId)
           .single()
 
         if (sub) {
-          await supabaseAdmin
+          await getSupabaseAdmin()
             .from('subscriptions')
             .update({
               status: subscription.status,
@@ -77,14 +71,14 @@ export async function POST(request: NextRequest) {
         const customerId = subscription.customer as string
 
         // Find user by customer ID
-        const { data: sub } = await supabaseAdmin
+        const { data: sub } = await getSupabaseAdmin()
           .from('subscriptions')
           .select('user_id')
           .eq('stripe_customer_id', customerId)
           .single()
 
         if (sub) {
-          await supabaseAdmin
+          await getSupabaseAdmin()
             .from('subscriptions')
             .update({
               plan: 'free',
@@ -101,14 +95,14 @@ export async function POST(request: NextRequest) {
         const invoice = event.data.object as Stripe.Invoice
         const customerId = invoice.customer as string
 
-        const { data: sub } = await supabaseAdmin
+        const { data: sub } = await getSupabaseAdmin()
           .from('subscriptions')
           .select('user_id')
           .eq('stripe_customer_id', customerId)
           .single()
 
         if (sub) {
-          await supabaseAdmin
+          await getSupabaseAdmin()
             .from('subscriptions')
             .update({ status: 'past_due' })
             .eq('user_id', sub.user_id)
