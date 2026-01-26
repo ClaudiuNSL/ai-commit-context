@@ -69,10 +69,10 @@ export default function Home() {
               Start Free <ArrowRight className="w-5 h-5" />
             </a>
             <a
-              href="#demo"
+              href="#how-it-works"
               className="inline-flex items-center justify-center gap-2 bg-dark-800 hover:bg-dark-700 border border-dark-600 text-white px-8 py-4 rounded-xl font-semibold text-lg transition"
             >
-              <Eye className="w-5 h-5" /> View Demo
+              <Eye className="w-5 h-5" /> See How It Works
             </a>
           </div>
 
@@ -315,7 +315,7 @@ export default function Home() {
                   ))}
                 </ul>
                 <a href="/signup?plan=pro" className="block text-center bg-primary-500 hover:bg-primary-600 text-white px-6 py-3 rounded-lg font-medium transition">
-                  Start Free Trial
+                  Get Pro
                 </a>
               </div>
             </div>
@@ -333,7 +333,7 @@ export default function Home() {
                 ))}
               </ul>
               <a href="/signup?plan=team" className="block text-center bg-dark-700 hover:bg-dark-600 text-white px-6 py-3 rounded-lg font-medium transition">
-                Start Free Trial
+                Get Team
               </a>
             </div>
           </div>
@@ -376,7 +376,7 @@ export default function Home() {
               <a href="https://github.com/ClaudiuNSL/ai-commit-context" className="hover:text-white transition">GitHub</a>
             </div>
             <div className="text-dark-400 text-sm">
-              © 2024 AI Commit Context. All rights reserved.
+              © 2026 AI Commit Context. All rights reserved.
             </div>
           </div>
         </div>
