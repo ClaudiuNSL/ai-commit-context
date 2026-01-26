@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { getSupabase } from '@/lib/supabase'
 import { useParams } from 'next/navigation'
 import {
   Loader2,
@@ -47,7 +47,7 @@ export default function SessionViewPage() {
     setLoading(true)
     setError(null)
 
-    const { data, error: fetchError } = await supabase
+    const { data, error: fetchError } = await getSupabase()
       .from('sessions')
       .select('*')
       .eq('short_code', code)

@@ -3,7 +3,7 @@
 import { useAuth } from '@/lib/auth-context'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState, Suspense } from 'react'
-import { supabase } from '@/lib/supabase'
+import { getSupabase } from '@/lib/supabase'
 import { PLANS, PlanType } from '@/lib/stripe'
 import {
   Loader2,
@@ -61,7 +61,7 @@ function DashboardContent() {
 
   const loadSessions = async () => {
     setLoadingSessions(true)
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('sessions')
       .select('*')
       .eq('user_id', user?.id)
@@ -74,7 +74,7 @@ function DashboardContent() {
   }
 
   const loadSubscription = async () => {
-    const { data } = await supabase
+    const { data } = await getSupabase()
       .from('subscriptions')
       .select('*')
       .eq('user_id', user?.id)
