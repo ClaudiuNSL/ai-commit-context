@@ -6,7 +6,7 @@ import { Check, ArrowLeft, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState, useEffect, Suspense } from 'react'
-import { getSupabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/client'
 
 function PricingContent() {
   const { user, loading: authLoading } = useAuth()
@@ -23,7 +23,7 @@ function PricingContent() {
   }, [user])
 
   const loadSubscription = async () => {
-    const { data } = await getSupabase()
+    const { data } = await createClient()
       .from('subscriptions')
       .select('plan')
       .eq('user_id', user?.id)

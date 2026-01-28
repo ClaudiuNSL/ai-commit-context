@@ -1,7 +1,7 @@
 'use client'
 
 import { useAuth } from '@/lib/auth-context'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect } from 'react'
 import { Github, ArrowLeft, Loader2, Check } from 'lucide-react'
 import Link from 'next/link'
@@ -14,8 +14,13 @@ const features = [
 ]
 
 export default function SignupPage() {
-  const { user, loading, signInWithGitHub } = useAuth()
+  const { user, loading, signInWithGitHub, authError } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const errorParam = searchParams.get('error')
+  const errorDescription = searchParams.get('error_description')
+  const errorMessage =
+    authError || errorDescription || (errorParam ? 'Authentication failed. Please try again.' : null)
 
   useEffect(() => {
     if (user && !loading) {
@@ -83,6 +88,12 @@ export default function SignupPage() {
               <h1 className="text-3xl font-bold mb-2">Create your account</h1>
               <p className="text-slate-400">Get started for free, no credit card required</p>
             </div>
+
+            {errorMessage && (
+              <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                {errorMessage}
+              </div>
+            )}
 
             <button
               onClick={signInWithGitHub}

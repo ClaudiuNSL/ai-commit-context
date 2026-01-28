@@ -3,7 +3,7 @@
 import { useAuth } from '@/lib/auth-context'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState, Suspense } from 'react'
-import { getSupabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/client'
 import { PLANS, PlanType } from '@/lib/stripe'
 import {
   Loader2,
@@ -43,6 +43,7 @@ function DashboardContent() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [loadingSessions, setLoadingSessions] = useState(true)
+  const [sessionsError, setSessionsError] = useState<string | null>(null)
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
   const success = searchParams.get('success')
 
@@ -61,20 +62,34 @@ function DashboardContent() {
 
   const loadSessions = async () => {
     setLoadingSessions(true)
-    const { data, error } = await getSupabase()
-      .from('sessions')
-      .select('*')
-      .eq('user_id', user?.id)
-      .order('created_at', { ascending: false })
+    setSessionsError(null)
 
-    if (!error && data) {
-      setSessions(data)
+    try {
+      const { data, error } = await createClient()
+        .from('sessions')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Failed to load sessions:', error)
+        setSessionsError(error.message)
+        setSessions([])
+        return
+      }
+
+      setSessions(data ?? [])
+    } catch (err) {
+      console.error('Failed to load sessions:', err)
+      setSessionsError('Failed to load sessions. Please try again.')
+      setSessions([])
+    } finally {
+      setLoadingSessions(false)
     }
-    setLoadingSessions(false)
   }
 
   const loadSubscription = async () => {
-    const { data } = await getSupabase()
+    const { data } = await createClient()
       .from('subscriptions')
       .select('*')
       .eq('user_id', user?.id)
@@ -277,6 +292,18 @@ function DashboardContent() {
           {loadingSessions ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-sky-400" />
+            </div>
+          ) : sessionsError ? (
+            <div className="text-center py-12">
+              <MessageSquare className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">Could not load sessions</h3>
+              <p className="text-slate-400 mb-6">{sessionsError}</p>
+              <button
+                onClick={loadSessions}
+                className="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                Retry
+              </button>
             </div>
           ) : sessions.length === 0 ? (
             <div className="text-center py-12">
