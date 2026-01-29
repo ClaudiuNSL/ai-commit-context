@@ -1,8 +1,8 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect } from 'react'
 import { Github, ArrowLeft, Loader2, Check } from 'lucide-react'
 import Link from 'next/link'
 
@@ -13,8 +13,8 @@ const features = [
   'GitHub integration',
 ]
 
-export default function SignupPage() {
-  const { user, loading, signInWithGitHub, signOut, authError } = useAuth()
+function SignupContent() {
+  const { user, loading, signInWithGitHub, authError } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const errorParam = searchParams.get('error')
@@ -149,5 +149,19 @@ export default function SignupPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-sky-400" />
+        </div>
+      }
+    >
+      <SignupContent />
+    </Suspense>
   )
 }
