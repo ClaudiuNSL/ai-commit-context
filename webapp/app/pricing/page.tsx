@@ -36,7 +36,11 @@ function PricingContent() {
 
   const handleSubscribe = async (plan: PlanType) => {
     if (!user) {
-      router.push(`/signup?plan=${plan}`)
+      if (plan === 'free') {
+        router.push('/demo')
+      } else {
+        router.push(`/signup?plan=${plan}`)
+      }
       return
     }
 

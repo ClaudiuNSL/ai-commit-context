@@ -11,6 +11,7 @@ import {
   Terminal,
   Code2
 } from 'lucide-react'
+import Link from 'next/link'
 
 export default function Home() {
   return (
@@ -19,25 +20,25 @@ export default function Home() {
       <nav className="fixed top-0 w-full z-50 bg-dark-900/80 backdrop-blur-lg border-b border-dark-700/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-2">
+            <Link href="/" className="flex items-center gap-2">
               <div className="w-8 h-8 bg-gradient-to-br from-primary-400 to-purple-500 rounded-lg flex items-center justify-center">
                 <MessageSquare className="w-5 h-5 text-white" />
               </div>
               <span className="font-bold text-xl">AI Commit Context</span>
-            </div>
+            </Link>
             <div className="hidden md:flex items-center gap-8">
               <a href="#features" className="text-dark-300 hover:text-white transition">Features</a>
               <a href="#how-it-works" className="text-dark-300 hover:text-white transition">How it works</a>
               <a href="#pricing" className="text-dark-300 hover:text-white transition">Pricing</a>
             </div>
             <div className="flex items-center gap-4">
-              <a href="/login" className="text-dark-300 hover:text-white transition">Log in</a>
-              <a
-                href="/signup"
+              <Link href="/login" className="text-dark-300 hover:text-white transition">Log in</Link>
+              <Link
+                href="/demo"
                 className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg font-medium transition"
               >
                 Get Started Free
-              </a>
+              </Link>
             </div>
           </div>
         </div>
@@ -62,12 +63,12 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-            <a
-              href="/signup"
+            <Link
+              href="/demo"
               className="inline-flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-8 py-4 rounded-xl font-semibold text-lg transition glow"
             >
               Start Free <ArrowRight className="w-5 h-5" />
-            </a>
+            </Link>
             <a
               href="#how-it-works"
               className="inline-flex items-center justify-center gap-2 bg-dark-800 hover:bg-dark-700 border border-dark-600 text-white px-8 py-4 rounded-xl font-semibold text-lg transition"
@@ -293,9 +294,9 @@ export default function Home() {
                   </li>
                 ))}
               </ul>
-              <a href="/signup" className="block text-center bg-dark-700 hover:bg-dark-600 text-white px-6 py-3 rounded-lg font-medium transition">
+              <Link href="/demo" className="block text-center bg-dark-700 hover:bg-dark-600 text-white px-6 py-3 rounded-lg font-medium transition">
                 Get Started
-              </a>
+              </Link>
             </div>
 
             {/* Pro Plan */}
@@ -314,9 +315,9 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
-                <a href="/signup?plan=pro" className="block text-center bg-primary-500 hover:bg-primary-600 text-white px-6 py-3 rounded-lg font-medium transition">
+                <Link href="/signup?plan=pro" className="block text-center bg-primary-500 hover:bg-primary-600 text-white px-6 py-3 rounded-lg font-medium transition">
                   Get Pro
-                </a>
+                </Link>
               </div>
             </div>
 
@@ -332,9 +333,9 @@ export default function Home() {
                   </li>
                 ))}
               </ul>
-              <a href="/signup?plan=team" className="block text-center bg-dark-700 hover:bg-dark-600 text-white px-6 py-3 rounded-lg font-medium transition">
+              <Link href="/signup?plan=team" className="block text-center bg-dark-700 hover:bg-dark-600 text-white px-6 py-3 rounded-lg font-medium transition">
                 Get Team
-              </a>
+              </Link>
             </div>
           </div>
         </div>
@@ -349,12 +350,12 @@ export default function Home() {
           <p className="text-dark-300 text-lg mb-8">
             Join developers who are making their code changes transparent and understandable.
           </p>
-          <a
-            href="/signup"
+          <Link
+            href="/demo"
             className="inline-flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-8 py-4 rounded-xl font-semibold text-lg transition glow"
           >
             Get Started Free <ArrowRight className="w-5 h-5" />
-          </a>
+          </Link>
           <p className="text-dark-400 text-sm mt-4">No credit card required</p>
         </div>
       </section>
@@ -363,16 +364,16 @@ export default function Home() {
       <footer className="py-12 px-4 border-t border-dark-800">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center gap-8">
-            <div className="flex items-center gap-2">
+            <Link href="/" className="flex items-center gap-2">
               <div className="w-8 h-8 bg-gradient-to-br from-primary-400 to-purple-500 rounded-lg flex items-center justify-center">
                 <MessageSquare className="w-5 h-5 text-white" />
               </div>
               <span className="font-bold text-xl">AI Commit Context</span>
-            </div>
+            </Link>
             <div className="flex gap-8 text-dark-400">
-              <a href="/privacy" className="hover:text-white transition">Privacy</a>
-              <a href="/terms" className="hover:text-white transition">Terms</a>
-              <a href="/docs" className="hover:text-white transition">Docs</a>
+              <Link href="/privacy" className="hover:text-white transition">Privacy</Link>
+              <Link href="/terms" className="hover:text-white transition">Terms</Link>
+              <Link href="/docs" className="hover:text-white transition">Docs</Link>
               <a href="https://github.com/ClaudiuNSL/ai-commit-context" className="hover:text-white transition">GitHub</a>
             </div>
             <div className="text-dark-400 text-sm">

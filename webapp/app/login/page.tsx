@@ -7,7 +7,7 @@ import { Github, ArrowLeft, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 
 export default function LoginPage() {
-  const { user, loading, signInWithGitHub, authError } = useAuth()
+  const { user, loading, signInWithGitHub, signOut, authError } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const errorParam = searchParams.get('error')
@@ -15,16 +15,37 @@ export default function LoginPage() {
   const errorMessage =
     authError || errorDescription || (errorParam ? 'Authentication failed. Please try again.' : null)
 
-  useEffect(() => {
-    if (user && !loading) {
-      router.push('/dashboard')
-    }
-  }, [user, loading, router])
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-sky-400" />
+      </div>
+    )
+  }
+
+  if (user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4">
+        <div className="w-full max-w-md gradient-border p-8 text-center">
+          <h1 className="text-2xl font-bold mb-2">You are already signed in</h1>
+          <p className="text-slate-400 mb-6">
+            Continue to your dashboard or sign out to use a different account.
+          </p>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="w-full bg-sky-500 hover:bg-sky-600 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+            >
+              Go to dashboard
+            </button>
+            <a
+              href="/api/auth/signout"
+              className="w-full block text-center bg-slate-800 hover:bg-slate-700 text-white py-3 px-4 rounded-lg font-medium transition-colors border border-slate-700"
+            >
+              Sign out
+            </a>
+          </div>
+        </div>
       </div>
     )
   }

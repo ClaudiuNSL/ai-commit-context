@@ -1,7 +1,18 @@
+'use client'
+
+﻿'use client'
+
+import { useEffect } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, TerminalSquare } from 'lucide-react'
 
 export default function GettingStartedPage() {
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/d7344264-ebce-4aee-8b79-23cf989cef3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/docs/getting-started/page.tsx:6',message:'getting_started_mount',data:{path:typeof window !== 'undefined' ? window.location.pathname : 'server',commandShown:'npm install -g ai-commit-context'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+    // #endregion
+  }, [])
+
   return (
     <div className="min-h-screen px-4 py-10">
       <div className="mx-auto max-w-3xl">

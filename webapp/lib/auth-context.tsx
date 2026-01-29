@@ -25,6 +25,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const supabase = createClient()
     let isMounted = true
     let retryTimeout: ReturnType<typeof setTimeout> | null = null
+    const isAuthCallback =
+      typeof window !== 'undefined' && window.location.pathname.startsWith('/auth/callback')
+
+    if (isAuthCallback) {
+      setLoading(false)
+      return () => {
+        isMounted = false
+        if (retryTimeout) {
+          clearTimeout(retryTimeout)
+        }
+      }
+    }
 
     // Get initial session
     const loadSession = async (attempt = 0) => {
@@ -112,8 +124,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
-    const supabase = createClient()
-    await supabase.auth.signOut()
+    setSession(null)
+    setUser(null)
+    window.location.href = '/api/auth/signout'
   }
 
   return (
