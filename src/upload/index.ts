@@ -1,8 +1,46 @@
 import fs from 'fs';
 import path from 'path';
+import https from 'https';
+import http from 'http';
 import { loadConfig } from '../utils/index.js';
 import { getSession, updateSessionUploaded, getSessionFiles } from '../db/index.js';
 import { parseSessionFile } from '../parser/index.js';
+
+/**
+ * Make an HTTP/HTTPS POST request
+ */
+function httpPost(url: string, data: string, headers: Record<string, string>): Promise<{ status: number; body: string }> {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const isHttps = urlObj.protocol === 'https:';
+    const options = {
+      hostname: urlObj.hostname,
+      port: urlObj.port || (isHttps ? 443 : 80),
+      path: urlObj.pathname,
+      method: 'POST',
+      headers: {
+        ...headers,
+        'Content-Length': Buffer.byteLength(data),
+      },
+    };
+
+    const client = isHttps ? https : http;
+    const req = client.request(options, (res) => {
+      let body = '';
+      res.on('data', (chunk) => { body += chunk; });
+      res.on('end', () => {
+        resolve({ status: res.statusCode || 0, body });
+      });
+    });
+
+    req.on('error', (e) => {
+      reject(e);
+    });
+
+    req.write(data);
+    req.end();
+  });
+}
 
 interface UploadResult {
   success: boolean;
@@ -41,22 +79,24 @@ export async function uploadSession(sessionId: string): Promise<UploadResult> {
     filesModified: files.map(f => f.filePath),
   };
 
-  try {
-    const response = await fetch(`${apiUrl}/api/sessions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(config.auth.token ? { 'Authorization': `Bearer ${config.auth.token}` } : {}),
-      },
-      body: JSON.stringify(payload),
-    });
+  const url = `${apiUrl}/api/sessions`;
+  const body = JSON.stringify(payload);
 
-    if (!response.ok) {
-      const error = await response.text();
-      return { success: false, error: `Server error: ${error}` };
+  try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (config.auth.token) {
+      headers['Authorization'] = `Bearer ${config.auth.token}`;
     }
 
-    const data = await response.json() as { url?: string; shortCode?: string };
+    const response = await httpPost(url, body, headers);
+
+    if (response.status !== 200) {
+      return { success: false, error: `Server error (${response.status}): ${response.body}` };
+    }
+
+    const data = JSON.parse(response.body) as { url?: string; shortCode?: string };
 
     // Update local database
     if (data.url) {
@@ -69,22 +109,7 @@ export async function uploadSession(sessionId: string): Promise<UploadResult> {
       shortCode: data.shortCode,
     };
   } catch (error) {
-    // Get detailed error message including cause
-    let errorMsg = 'Unknown error';
-    if (error instanceof Error) {
-      errorMsg = error.message;
-      // Node.js fetch errors often have a cause with more details
-      if ('cause' in error && error.cause) {
-        const cause = error.cause;
-        if (cause instanceof Error) {
-          errorMsg += ` (${cause.message})`;
-        } else if (typeof cause === 'object' && cause !== null) {
-          errorMsg += ` (${JSON.stringify(cause)})`;
-        } else {
-          errorMsg += ` (${String(cause)})`;
-        }
-      }
-    }
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
     return {
       success: false,
       error: `Failed to connect to server: ${errorMsg}`,
@@ -141,30 +166,24 @@ export async function linkCommitRemote(
   const apiUrl = config.auth.apiUrl || 'https://ai-commit-context.vercel.app';
 
   try {
-    const response = await fetch(`${apiUrl}/api/sessions/${sessionCode}/commits`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(config.auth.token ? { 'Authorization': `Bearer ${config.auth.token}` } : {}),
-      },
-      body: JSON.stringify({ sha: commitSha, repoUrl, message }),
-    });
+    const url = `${apiUrl}/api/sessions/${sessionCode}/commits`;
+    const body = JSON.stringify({ sha: commitSha, repoUrl, message });
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (config.auth.token) {
+      headers['Authorization'] = `Bearer ${config.auth.token}`;
+    }
 
-    if (!response.ok) {
-      const error = await response.text();
-      return { success: false, error: `Server error: ${error}` };
+    const response = await httpPost(url, body, headers);
+
+    if (response.status !== 200) {
+      return { success: false, error: `Server error (${response.status}): ${response.body}` };
     }
 
     return { success: true };
   } catch (error) {
-    // Get detailed error message including cause
-    let errorMsg = 'Unknown error';
-    if (error instanceof Error) {
-      errorMsg = error.message;
-      if ('cause' in error && error.cause instanceof Error) {
-        errorMsg += `: ${error.cause.message}`;
-      }
-    }
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
     return {
       success: false,
       error: `Failed to connect to server: ${errorMsg}`,

@@ -1,6 +1,6 @@
 {
   "name": "ai-commit-context",
-  "version": "0.1.3",
+  "version": "0.1.5",
   "description": "Connect Claude Code conversations to GitHub commits and PRs",
   "type": "module",
   "main": "dist/index.js",
