@@ -2,9 +2,6 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/d7344264-ebce-4aee-8b79-23cf989cef3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'middleware.ts:4',message:'middleware_entry',data:{path:request.nextUrl.pathname},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-  // #endregion
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -47,9 +44,6 @@ export async function middleware(request: NextRequest) {
     !request.nextUrl.pathname.startsWith('/api/') &&
     request.nextUrl.pathname.startsWith('/dashboard')
   ) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/d7344264-ebce-4aee-8b79-23cf989cef3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'middleware.ts:43',message:'redirect_to_login',data:{path:request.nextUrl.pathname},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
-    // #endregion
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)

@@ -16,7 +16,7 @@ interface UploadResult {
  */
 export async function uploadSession(sessionId: string): Promise<UploadResult> {
   const config = loadConfig();
-  const apiUrl = config.auth.apiUrl || 'http://localhost:3456';
+  const apiUrl = config.auth.apiUrl || 'https://aicommitcontext.dev/api';
 
   // Get session from local DB
   const session = getSession(sessionId);
@@ -120,7 +120,7 @@ export async function linkCommitRemote(
   message: string
 ): Promise<UploadResult> {
   const config = loadConfig();
-  const apiUrl = config.auth.apiUrl || 'http://localhost:3456';
+  const apiUrl = config.auth.apiUrl || 'https://aicommitcontext.dev/api';
 
   try {
     const response = await fetch(`${apiUrl}/api/sessions/${sessionCode}/commits`, {

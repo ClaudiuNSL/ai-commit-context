@@ -54,9 +54,6 @@ function DashboardContent() {
   }, [user, loading, router])
 
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/d7344264-ebce-4aee-8b79-23cf989cef3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/dashboard/page.tsx:56',message:'dashboard_effect_user',data:{hasUser:Boolean(user)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-    // #endregion
     if (user) {
       loadSessions()
       loadSubscription()
@@ -68,51 +65,30 @@ function DashboardContent() {
     setSessionsError(null)
 
     try {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/d7344264-ebce-4aee-8b79-23cf989cef3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/dashboard/page.tsx:67',message:'loadSessions_start',data:{userId:user?.id || null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
-      // #endregion
       const { data, error } = await createClient()
         .from('sessions')
         .select('*')
         .eq('user_id', user?.id)
         .order('created_at', { ascending: false })
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/d7344264-ebce-4aee-8b79-23cf989cef3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/dashboard/page.tsx:79',message:'loadSessions_after_query',data:{hasError:Boolean(error),count:(data ?? []).length},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'H2'})}).catch(()=>{});
-      // #endregion
 
       if (error) {
         console.error('Failed to load sessions:', error)
         setSessionsError(error.message)
         setSessions([])
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/d7344264-ebce-4aee-8b79-23cf989cef3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/dashboard/page.tsx:75',message:'loadSessions_error',data:{message:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
-        // #endregion
         return
       }
 
       setSessions(data ?? [])
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/d7344264-ebce-4aee-8b79-23cf989cef3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/dashboard/page.tsx:81',message:'loadSessions_success',data:{count:(data ?? []).length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
-      // #endregion
     } catch (err) {
       console.error('Failed to load sessions:', err)
       setSessionsError('Failed to load sessions. Please try again.')
       setSessions([])
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/d7344264-ebce-4aee-8b79-23cf989cef3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/dashboard/page.tsx:86',message:'loadSessions_exception',data:{message:(err as any)?.message || 'unknown'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
-      // #endregion
     } finally {
       setLoadingSessions(false)
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/d7344264-ebce-4aee-8b79-23cf989cef3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/dashboard/page.tsx:103',message:'loadSessions_finally',data:{loadingSessions:false},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'H2'})}).catch(()=>{});
-      // #endregion
     }
   }
 
   const loadSubscription = async () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/d7344264-ebce-4aee-8b79-23cf989cef3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/dashboard/page.tsx:107',message:'loadSubscription_start',data:{userId:user?.id || null},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'H3'})}).catch(()=>{});
-    // #endregion
     const { data } = await createClient()
       .from('subscriptions')
       .select('*')
@@ -122,9 +98,6 @@ function DashboardContent() {
     if (data) {
       setSubscription(data)
     }
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/d7344264-ebce-4aee-8b79-23cf989cef3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/dashboard/page.tsx:116',message:'loadSubscription_done',data:{hasData:Boolean(data)},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'H3'})}).catch(()=>{});
-    // #endregion
   }
 
   const openBillingPortal = async () => {
@@ -145,9 +118,6 @@ function DashboardContent() {
 
 
   if (loading || !user) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/d7344264-ebce-4aee-8b79-23cf989cef3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/dashboard/page.tsx:120',message:'dashboard_loading_gate',data:{loading,hasUser:Boolean(user)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-    // #endregion
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-sky-400" />
