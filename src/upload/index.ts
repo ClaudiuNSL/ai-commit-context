@@ -67,9 +67,18 @@ export async function uploadSession(sessionId: string): Promise<UploadResult> {
       shortCode: data.shortCode,
     };
   } catch (error) {
+    // Get detailed error message including cause
+    let errorMsg = 'Unknown error';
+    if (error instanceof Error) {
+      errorMsg = error.message;
+      // Node.js fetch errors often have a cause with more details
+      if ('cause' in error && error.cause instanceof Error) {
+        errorMsg += `: ${error.cause.message}`;
+      }
+    }
     return {
       success: false,
-      error: `Failed to connect to server: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Failed to connect to server: ${errorMsg}`,
     };
   }
 }
@@ -139,9 +148,17 @@ export async function linkCommitRemote(
 
     return { success: true };
   } catch (error) {
+    // Get detailed error message including cause
+    let errorMsg = 'Unknown error';
+    if (error instanceof Error) {
+      errorMsg = error.message;
+      if ('cause' in error && error.cause instanceof Error) {
+        errorMsg += `: ${error.cause.message}`;
+      }
+    }
     return {
       success: false,
-      error: `Failed to connect to server: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Failed to connect to server: ${errorMsg}`,
     };
   }
 }

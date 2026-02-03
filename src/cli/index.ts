@@ -37,7 +37,7 @@ const program = new Command();
 program
   .name('acc')
   .description('AI Commit Context - Connect Claude Code conversations to GitHub commits')
-  .version('0.1.1');
+  .version('0.1.2');
 
 // =============================================================================
 // INIT COMMAND
