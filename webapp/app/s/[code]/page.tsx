@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { useParams } from 'next/navigation'
 import {
   Loader2,
@@ -43,20 +42,59 @@ export default function SessionViewPage() {
     loadSession()
   }, [code])
 
+  // Extract text content from Claude message (handles complex content arrays)
+  const extractContent = (content: unknown): string => {
+    if (typeof content === 'string') {
+      return content
+    }
+    if (Array.isArray(content)) {
+      // Find text blocks, skip thinking blocks
+      const textBlocks = content.filter(
+        (block: { type?: string }) => block.type === 'text'
+      )
+      return textBlocks
+        .map((block: { text?: string }) => block.text || '')
+        .join('\n')
+    }
+    return ''
+  }
+
   const loadSession = async () => {
     setLoading(true)
     setError(null)
 
-    const { data, error: fetchError } = await createClient()
-      .from('sessions')
-      .select('*')
-      .eq('short_code', code)
-      .single()
+    try {
+      const response = await fetch(`/api/sessions/${code}`)
+      if (!response.ok) {
+        setError('Session not found')
+        setLoading(false)
+        return
+      }
+      const data = await response.json()
 
-    if (fetchError) {
-      setError('Session not found')
-    } else {
-      setSession(data)
+      // Map API response to expected format
+      const mappedMessages: Message[] = []
+
+      for (const m of data.messages || []) {
+        const role = m.message?.role === 'assistant' || m.type === 'assistant' ? 'assistant' : 'human'
+        const content = extractContent(m.message?.content)
+
+        // Only add messages with actual content
+        if (content && content.trim()) {
+          mappedMessages.push({ role, content })
+        }
+      }
+
+      setSession({
+        id: data.id,
+        short_code: data.shortCode,
+        title: data.projectName,
+        messages: mappedMessages,
+        files_modified: data.filesModified || [],
+        created_at: data.uploadedAt || data.startedAt
+      })
+    } catch {
+      setError('Failed to load session')
     }
     setLoading(false)
   }
