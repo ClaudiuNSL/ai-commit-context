@@ -42,3 +42,5 @@ github-action/lib/
 # Next.js
 webapp/.next/
 webapp/out/
+.vercel
+.env*.local
