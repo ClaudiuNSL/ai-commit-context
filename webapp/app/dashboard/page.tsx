@@ -18,6 +18,10 @@ import {
   CreditCard,
   Sparkles,
   CheckCircle,
+  Key,
+  Trash2,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -36,6 +40,13 @@ interface Subscription {
   cancel_at_period_end: boolean
 }
 
+interface ApiKey {
+  id: string
+  name: string
+  created_at: string
+  last_used_at: string | null
+}
+
 function DashboardContent() {
   const { user, loading, signOut } = useAuth()
   const router = useRouter()
@@ -45,6 +56,10 @@ function DashboardContent() {
   const [loadingSessions, setLoadingSessions] = useState(true)
   const [sessionsError, setSessionsError] = useState<string | null>(null)
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
+  const [newApiKey, setNewApiKey] = useState<string | null>(null)
+  const [showApiKey, setShowApiKey] = useState(false)
+  const [creatingKey, setCreatingKey] = useState(false)
   const success = searchParams.get('success')
 
   useEffect(() => {
@@ -57,28 +72,37 @@ function DashboardContent() {
     if (user) {
       loadSessions()
       loadSubscription()
+      loadApiKeys()
     }
   }, [user])
 
   const loadSessions = async () => {
+    if (!user?.id) {
+      console.log('No user id yet, skipping load')
+      return
+    }
+
     setLoadingSessions(true)
     setSessionsError(null)
 
     try {
-      const { data, error } = await createClient()
-        .from('sessions')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false })
+      const userId = user.id
+      console.log('Loading sessions for user:', userId)
 
-      if (error) {
-        console.error('Failed to load sessions:', error)
-        setSessionsError(error.message)
+      // Use fetch API directly instead of Supabase client
+      const response = await fetch(`/api/user-sessions?userId=${encodeURIComponent(userId)}`)
+      const result = await response.json()
+
+      console.log('Sessions result:', result)
+
+      if (result.error) {
+        console.error('Failed to load sessions:', result.error)
+        setSessionsError(result.error)
         setSessions([])
         return
       }
 
-      setSessions(data ?? [])
+      setSessions(result.sessions ?? [])
     } catch (err) {
       console.error('Failed to load sessions:', err)
       setSessionsError('Failed to load sessions. Please try again.')
@@ -114,6 +138,60 @@ function DashboardContent() {
     navigator.clipboard.writeText(code)
     setCopiedCode(code)
     setTimeout(() => setCopiedCode(null), 2000)
+  }
+
+  const loadApiKeys = async () => {
+    try {
+      const response = await fetch('/api/keys')
+      const data = await response.json()
+      if (data.keys) {
+        setApiKeys(data.keys)
+      }
+    } catch (err) {
+      console.error('Failed to load API keys:', err)
+    }
+  }
+
+  const createApiKey = async () => {
+    setCreatingKey(true)
+    try {
+      const response = await fetch('/api/keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'CLI Key' })
+      })
+      const data = await response.json()
+      if (data.key) {
+        setNewApiKey(data.key)
+        setShowApiKey(true)
+        loadApiKeys()
+      }
+    } catch (err) {
+      console.error('Failed to create API key:', err)
+    } finally {
+      setCreatingKey(false)
+    }
+  }
+
+  const deleteApiKey = async (id: string) => {
+    try {
+      await fetch('/api/keys', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      })
+      loadApiKeys()
+    } catch (err) {
+      console.error('Failed to delete API key:', err)
+    }
+  }
+
+  const copyApiKey = () => {
+    if (newApiKey) {
+      navigator.clipboard.writeText(newApiKey)
+      setCopiedCode('apikey')
+      setTimeout(() => setCopiedCode(null), 2000)
+    }
   }
 
 
@@ -369,6 +447,102 @@ function DashboardContent() {
                       </Link>
                     </div>
                   </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* API Keys section */}
+        <div className="mt-8 bg-slate-800/50 rounded-lg border border-slate-700">
+          <div className="flex items-center justify-between p-4 border-b border-slate-700">
+            <div className="flex items-center gap-3">
+              <Key className="w-5 h-5 text-sky-400" />
+              <h2 className="text-lg font-semibold">API Keys</h2>
+            </div>
+            <button
+              onClick={createApiKey}
+              disabled={creatingKey}
+              className="inline-flex items-center gap-2 text-sm bg-sky-500 hover:bg-sky-600 disabled:bg-sky-500/50 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              {creatingKey ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
+              Generate Key
+            </button>
+          </div>
+
+          {/* New API Key display */}
+          {newApiKey && (
+            <div className="p-4 bg-green-500/10 border-b border-green-500/20">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle className="w-4 h-4 text-green-400" />
+                <span className="text-green-400 font-medium">New API Key Created</span>
+              </div>
+              <p className="text-sm text-slate-400 mb-3">
+                Copy this key now - it will not be shown again!
+              </p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 bg-slate-900 px-3 py-2 rounded font-mono text-sm">
+                  {showApiKey ? newApiKey : '•'.repeat(40)}
+                </code>
+                <button
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="p-2 text-slate-400 hover:text-white transition-colors"
+                  title={showApiKey ? 'Hide key' : 'Show key'}
+                >
+                  {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+                <button
+                  onClick={copyApiKey}
+                  className="p-2 text-slate-400 hover:text-white transition-colors"
+                  title="Copy key"
+                >
+                  {copiedCode === 'apikey' ? (
+                    <span className="text-green-400 text-sm">Copied!</span>
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+              <div className="mt-3 text-sm text-slate-400">
+                <p>Configure in CLI:</p>
+                <code className="block mt-1 bg-slate-900 px-3 py-2 rounded font-mono text-green-400">
+                  acc config set auth.token {showApiKey ? newApiKey : '<your-api-key>'}
+                </code>
+              </div>
+            </div>
+          )}
+
+          {/* Existing keys list */}
+          {apiKeys.length === 0 ? (
+            <div className="text-center py-8">
+              <Key className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+              <p className="text-slate-400">No API keys yet</p>
+              <p className="text-sm text-slate-500">Generate a key to link your CLI uploads to your account</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-700">
+              {apiKeys.map((key) => (
+                <div key={key.id} className="p-4 flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">{key.name}</p>
+                    <p className="text-sm text-slate-400">
+                      Created {new Date(key.created_at).toLocaleDateString()}
+                      {key.last_used_at && (
+                        <> · Last used {new Date(key.last_used_at).toLocaleDateString()}</>
+                      )}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => deleteApiKey(key.id)}
+                    className="p-2 text-slate-400 hover:text-red-400 transition-colors"
+                    title="Delete key"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               ))}
             </div>

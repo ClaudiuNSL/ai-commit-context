@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { nanoid } from 'nanoid'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { verifyApiKey } from '@/lib/api-auth'
 
 // POST - Upload session (from CLI)
 export async function POST(request: NextRequest) {
   try {
+    // Check for API key authentication
+    const authHeader = request.headers.get('Authorization')
+    const userId = await verifyApiKey(authHeader)
+
     const { sessionId, projectName, startedAt, endedAt, messages, filesModified } =
       await request.json()
 
@@ -18,6 +23,13 @@ export async function POST(request: NextRequest) {
     const shortCode = nanoid(8)
     const supabase = getSupabaseAdmin()
 
+    // Ensure profile exists if we have a user_id
+    if (userId) {
+      await supabase
+        .from('profiles')
+        .upsert({ id: userId }, { onConflict: 'id' })
+    }
+
     const { data, error } = await supabase
       .from('sessions')
       .insert({
@@ -28,14 +40,15 @@ export async function POST(request: NextRequest) {
         message_count: messages.length,
         messages: messages,
         files_modified: filesModified || [],
-        privacy: 'unlisted'
+        privacy: 'unlisted',
+        user_id: userId || null
       })
       .select()
       .single()
 
     if (error) {
       console.error('Supabase error:', error)
-      return NextResponse.json({ error: 'Failed to upload session' }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to upload session', details: error.message }, { status: 500 })
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
@@ -47,7 +60,8 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Upload error:', error)
-    return NextResponse.json({ error: 'Failed to upload session' }, { status: 500 })
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    return NextResponse.json({ error: 'Failed to upload session', details: message }, { status: 500 })
   }
 }
 
