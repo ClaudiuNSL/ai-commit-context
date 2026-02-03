@@ -32,6 +32,15 @@ export async function uploadSession(sessionId: string): Promise<UploadResult> {
 
   const files = getSessionFiles(sessionId);
 
+  const payload = {
+    sessionId: session.id,
+    projectName: session.projectName,
+    startedAt: session.startedAt.toISOString(),
+    endedAt: session.endedAt?.toISOString() || null,
+    messages,
+    filesModified: files.map(f => f.filePath),
+  };
+
   try {
     const response = await fetch(`${apiUrl}/api/sessions`, {
       method: 'POST',
@@ -39,14 +48,7 @@ export async function uploadSession(sessionId: string): Promise<UploadResult> {
         'Content-Type': 'application/json',
         ...(config.auth.token ? { 'Authorization': `Bearer ${config.auth.token}` } : {}),
       },
-      body: JSON.stringify({
-        sessionId: session.id,
-        projectName: session.projectName,
-        startedAt: session.startedAt.toISOString(),
-        endedAt: session.endedAt?.toISOString() || null,
-        messages,
-        filesModified: files.map(f => f.filePath),
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
@@ -72,8 +74,15 @@ export async function uploadSession(sessionId: string): Promise<UploadResult> {
     if (error instanceof Error) {
       errorMsg = error.message;
       // Node.js fetch errors often have a cause with more details
-      if ('cause' in error && error.cause instanceof Error) {
-        errorMsg += `: ${error.cause.message}`;
+      if ('cause' in error && error.cause) {
+        const cause = error.cause;
+        if (cause instanceof Error) {
+          errorMsg += ` (${cause.message})`;
+        } else if (typeof cause === 'object' && cause !== null) {
+          errorMsg += ` (${JSON.stringify(cause)})`;
+        } else {
+          errorMsg += ` (${String(cause)})`;
+        }
       }
     }
     return {
