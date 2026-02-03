@@ -30,17 +30,8 @@ export async function GET(
       .select('sessions(*)')
       .in('commit_id', commitIds)
 
-    interface SessionLink {
-      sessions: {
-        id: string
-        short_code: string
-        project_name: string
-        message_count: number
-        started_at: string
-      }
-    }
-
-    const sessions = links?.map((link: SessionLink) => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sessions = links?.map((link: any) => ({
       id: link.sessions.id,
       shortCode: link.sessions.short_code,
       url: `${baseUrl}/s/${link.sessions.short_code}`,
