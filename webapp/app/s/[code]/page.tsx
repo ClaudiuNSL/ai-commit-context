@@ -39,14 +39,14 @@ interface SessionData {
   id: string
   shortCode: string
   projectName: string | null
-  messages: unknown[]
-  cleanMessages: CleanMessage[]
+  messages: CleanMessage[]
   repos: RepoInfo[]
   firstUserMessage: string | null
   filesModified: string[]
   startedAt: string
   endedAt?: string
   uploadedAt: string
+  messageCount?: number
 }
 
 function MessageBubble({ message, isUser }: { message: CleanMessage; isUser: boolean }) {
@@ -238,7 +238,8 @@ export default function SessionViewPage() {
     )
   }
 
-  const displayMessages = detailedView ? session.messages : session.cleanMessages
+  // Use messages array - cleanMessages is the same as messages now
+  const displayMessages = session.messages as CleanMessage[]
 
   return (
     <div className="min-h-screen">
@@ -317,8 +318,8 @@ export default function SessionViewPage() {
 
         <div className="flex flex-wrap items-center gap-4 text-sm text-slate-400">
           <span>{new Date(session.uploadedAt || session.startedAt).toLocaleDateString()}</span>
-          {session.cleanMessages && (
-            <span>{session.cleanMessages.length} messages</span>
+          {displayMessages && (
+            <span>{displayMessages.length} messages</span>
           )}
         </div>
       </div>
@@ -342,7 +343,7 @@ export default function SessionViewPage() {
         ) : (
           // Clean conversation view
           <div className="space-y-4">
-            {session.cleanMessages?.map((message, index) => (
+            {displayMessages?.map((message, index) => (
               <MessageBubble
                 key={index}
                 message={message}
@@ -352,7 +353,7 @@ export default function SessionViewPage() {
           </div>
         )}
 
-        {(!session.cleanMessages || session.cleanMessages.length === 0) && !detailedView && (
+        {(!displayMessages || displayMessages.length === 0) && !detailedView && (
           <div className="text-center py-12 text-slate-400">
             <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p>No messages in this session</p>
