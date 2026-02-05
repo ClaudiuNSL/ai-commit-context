@@ -1,0 +1,12 @@
+{
+  "name": "commit-context",
+  "version": "1.0.0",
+  "description": "Automatically link Claude Code conversations to GitHub commits for better code review context",
+  "author": "AI Commit Context",
+  "repository": "https://github.com/AI-Commit-Context/ai-commit-context",
+  "license": "MIT",
+  "engines": {
+    "claude-code": ">=1.0.0"
+  },
+  "hooks": "./hooks/hooks.json"
+}

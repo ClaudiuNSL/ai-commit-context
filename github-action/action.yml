@@ -15,7 +15,7 @@ inputs:
   api-url:
     description: 'AI Commit Context API URL'
     required: false
-    default: 'https://api.aicommitcontext.dev'
+    default: 'https://ai-commit-context.vercel.app'
 
   api-token:
     description: 'API token for authentication (optional)'
@@ -27,8 +27,8 @@ inputs:
     required: false
     default: 'update'
 
-  show-excerpts:
-    description: 'Show conversation excerpts in the comment'
+  set-status:
+    description: 'Set commit status with AI context link'
     required: false
     default: 'true'
 
@@ -40,6 +40,9 @@ inputs:
 outputs:
   sessions-found:
     description: 'Number of AI sessions found in the PR'
+
+  session-url:
+    description: 'URL of the first AI session found'
 
   comment-url:
     description: 'URL of the created/updated PR comment'
