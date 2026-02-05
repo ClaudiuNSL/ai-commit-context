@@ -131,20 +131,37 @@ function parseSessionFile(filePath) {
     try {
       const entry = JSON.parse(line);
 
-      if (entry.type === 'human' || entry.role === 'user') {
-        messages.push({
-          role: 'user',
-          content: extractTextContent(entry.content || entry.message),
-          timestamp: entry.timestamp
-        });
-      } else if (entry.type === 'assistant' || entry.role === 'assistant') {
-        const filesModified = extractFilesFromToolUse(entry);
-        messages.push({
-          role: 'assistant',
-          content: extractTextContent(entry.content || entry.message),
-          filesModified,
-          timestamp: entry.timestamp
-        });
+      // Claude Code JSONL format: entry.type is 'user' or 'assistant'
+      // The actual message content is in entry.message.content
+      const messageData = entry.message;
+
+      // Skip entries without message data or meta messages
+      if (!messageData || entry.isMeta) {
+        continue;
+      }
+
+      if (entry.type === 'user') {
+        const textContent = extractTextContent(messageData.content);
+        // Skip empty or command-only messages
+        if (textContent && !textContent.startsWith('<local-command') && !textContent.startsWith('<command-name>')) {
+          messages.push({
+            role: 'user',
+            content: textContent,
+            timestamp: entry.timestamp
+          });
+        }
+      } else if (entry.type === 'assistant') {
+        const textContent = extractTextContent(messageData.content);
+        const filesModified = extractFilesFromToolUse(messageData);
+        // Only add if there's actual text content
+        if (textContent) {
+          messages.push({
+            role: 'assistant',
+            content: textContent,
+            filesModified,
+            timestamp: entry.timestamp
+          });
+        }
       }
     } catch {
       // Skip malformed lines
@@ -175,9 +192,9 @@ function extractTextContent(content) {
 /**
  * Extract file paths from tool_use blocks in assistant message
  */
-function extractFilesFromToolUse(entry) {
+function extractFilesFromToolUse(messageData) {
   const files = [];
-  const content = entry.content || [];
+  const content = messageData?.content || [];
 
   if (!Array.isArray(content)) {
     return files;
