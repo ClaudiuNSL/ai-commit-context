@@ -8,12 +8,18 @@ interface PollParams {
 }
 
 // GET - Poll device code status
+// v2 - with cache disabled
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export async function GET(
   request: NextRequest,
   { params }: PollParams
 ) {
   try {
     const { code } = await params
+
+    console.log('Poll endpoint called with code:', code)
 
     if (!code) {
       return NextResponse.json(
@@ -29,6 +35,8 @@ export async function GET(
       .from('device_codes')
       .select('status, user_id, api_key, username, expires_at')
       .eq('code', code)
+
+    console.log('Poll query result:', { code, rows, error })
 
     const data = rows?.[0]
 
