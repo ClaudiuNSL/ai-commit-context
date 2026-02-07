@@ -80,23 +80,40 @@ export async function POST(
       commitId = newCommit.id
     }
 
-    // Link session to commit
-    const { error: linkError } = await supabase
+    // Link session to commit - check if already linked first
+    const { data: existingLink } = await supabase
       .from('session_commits')
-      .upsert({
-        session_id: session.id,
-        commit_id: commitId
-      }, { onConflict: 'session_id,commit_id' })
+      .select('id')
+      .eq('session_id', session.id)
+      .eq('commit_id', commitId)
+      .maybeSingle()
 
-    if (linkError) {
-      console.error('Error linking commit:', linkError)
-      return NextResponse.json({
-        error: 'Failed to link commit',
-        details: linkError?.message
-      }, { status: 500 })
+    if (!existingLink) {
+      const { data: insertedLink, error: linkError } = await supabase
+        .from('session_commits')
+        .insert({
+          session_id: session.id,
+          commit_id: commitId
+        })
+        .select()
+        .single()
+
+      console.log('Inserted link:', insertedLink, 'Error:', linkError)
+
+      if (linkError) {
+        console.error('Error linking commit:', linkError)
+        return NextResponse.json({
+          error: 'Failed to link commit',
+          details: linkError?.message
+        }, { status: 500 })
+      }
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({
+      success: true,
+      sessionId: session.id,
+      commitId
+    })
   } catch (error) {
     console.error('Error linking commit:', error)
     return NextResponse.json({ error: 'Failed to link commit' }, { status: 500 })
