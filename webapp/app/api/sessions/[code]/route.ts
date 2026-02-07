@@ -158,13 +158,21 @@ export async function GET(
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
 
-    // Get linked commits
+    // Get linked commits - first get commit IDs, then fetch commits
     const { data: commitLinks } = await supabase
       .from('session_commits')
-      .select('commits(*)')
+      .select('commit_id')
       .eq('session_id', data.id)
 
-    const commits = commitLinks?.map((link: { commits: unknown }) => link.commits) || []
+    let commits: unknown[] = []
+    if (commitLinks && commitLinks.length > 0) {
+      const commitIds = commitLinks.map(link => link.commit_id)
+      const { data: commitData } = await supabase
+        .from('commits')
+        .select('*')
+        .in('id', commitIds)
+      commits = commitData || []
+    }
 
     // Process messages
     const rawMessages = data.messages || []
