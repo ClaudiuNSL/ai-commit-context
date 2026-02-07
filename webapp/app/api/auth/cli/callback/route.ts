@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import crypto from 'crypto'
+import { z } from 'zod'
+
+const callbackQuerySchema = z.object({
+  code: z.string().min(1, 'Authorization code is required'),
+  device_code: z.string().optional()
+})
 
 // Generate a random API key
 function generateApiKey(): string {
@@ -10,12 +16,17 @@ function generateApiKey(): string {
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl
-  const code = searchParams.get('code')
-  const deviceCode = searchParams.get('device_code')
 
-  if (!code) {
+  const result = callbackQuerySchema.safeParse({
+    code: searchParams.get('code'),
+    device_code: searchParams.get('device_code') ?? undefined
+  })
+
+  if (!result.success) {
     return NextResponse.redirect(`${origin}/auth/cli?error=${encodeURIComponent('Missing authorization code')}`)
   }
+
+  const { code, device_code: deviceCode } = result.data
 
   try {
     // Exchange the code for a session

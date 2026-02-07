@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { sessionCodeParamSchema, parseBody } from '@/lib/validations'
 
 interface ContentBlock {
   type: string
@@ -135,7 +136,14 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
-  const { code } = await params
+  const rawParams = await params
+  const parsed = parseBody(sessionCodeParamSchema, rawParams)
+
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid session code' }, { status: 400 })
+  }
+
+  const { code } = parsed.data
 
   try {
     const supabase = getSupabaseAdmin()

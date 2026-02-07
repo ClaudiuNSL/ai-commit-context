@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import crypto from 'crypto'
+import { z } from 'zod'
+
+const githubCallbackSchema = z.object({
+  code: z.string().optional(),
+  state: z.string().optional(),
+  error: z.string().optional(),
+  error_description: z.string().optional()
+})
 
 interface GitHubTokenResponse {
   access_token: string
@@ -26,10 +34,17 @@ function generateApiKey(): string {
 // GET - GitHub OAuth callback for device flow
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
-  const code = searchParams.get('code')
-  const state = searchParams.get('state')
-  const error = searchParams.get('error')
-  const errorDescription = searchParams.get('error_description')
+
+  const parsed = githubCallbackSchema.safeParse({
+    code: searchParams.get('code') ?? undefined,
+    state: searchParams.get('state') ?? undefined,
+    error: searchParams.get('error') ?? undefined,
+    error_description: searchParams.get('error_description') ?? undefined
+  })
+
+  const { code, state, error, error_description: errorDescription } = parsed.success
+    ? parsed.data
+    : { code: undefined, state: undefined, error: undefined, error_description: undefined }
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 

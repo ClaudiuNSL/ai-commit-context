@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { nanoid } from 'nanoid'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { verifyApiKey } from '@/lib/api-auth'
+import { uploadSessionSchema, parseBody } from '@/lib/validations'
 
 // POST - Upload session (from CLI)
 export async function POST(request: NextRequest) {
@@ -10,15 +11,17 @@ export async function POST(request: NextRequest) {
     const authHeader = request.headers.get('Authorization')
     const userId = await verifyApiKey(authHeader)
 
-    const { sessionId, projectName, startedAt, endedAt, messages, filesModified, repos } =
-      await request.json()
+    const body = await request.json()
+    const parsed = parseBody(uploadSessionSchema, body)
 
-    if (!sessionId || !messages) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Missing required fields: sessionId, messages' },
+        { error: 'Validation failed', details: parsed.error },
         { status: 400 }
       )
     }
+
+    const { sessionId, projectName, startedAt, endedAt, messages, filesModified, repos } = parsed.data
 
     const shortCode = nanoid(8)
     const supabase = getSupabaseAdmin()

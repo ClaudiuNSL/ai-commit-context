@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { sessionCodeParamSchema, parseBody } from '@/lib/validations'
 
 interface PollParams {
   params: Promise<{
@@ -17,16 +18,18 @@ export async function GET(
   { params }: PollParams
 ) {
   try {
-    const { code } = await params
+    const rawParams = await params
+    const parsed = parseBody(sessionCodeParamSchema, rawParams)
 
-    console.log('Poll endpoint called with code:', code)
-
-    if (!code) {
+    if (!parsed.success) {
       return NextResponse.json(
         { error: 'Missing device code' },
         { status: 400 }
       )
     }
+
+    const { code } = parsed.data
+    console.log('Poll endpoint called with code:', code)
 
     const supabase = getSupabaseAdmin()
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import crypto from 'crypto'
+import { codeQuerySchema, parseQuery } from '@/lib/validations'
 
 function generateDeviceCode(): string {
   return crypto.randomBytes(32).toString('base64url')
@@ -17,7 +18,7 @@ function generateUserCode(): string {
 }
 
 // POST - Create a new device code for CLI authentication
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     const supabase = getSupabaseAdmin()
 
@@ -60,14 +61,16 @@ export async function POST(request: NextRequest) {
 
 // GET - Validate a device code (checks both user_code and code columns)
 export async function GET(request: NextRequest) {
-  const codeParam = request.nextUrl.searchParams.get('code')
+  const parsed = parseQuery(codeQuerySchema, request.nextUrl.searchParams)
 
-  if (!codeParam) {
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: 'Code parameter is required' },
+      { error: 'Validation failed', details: parsed.error },
       { status: 400 }
     )
   }
+
+  const codeParam = parsed.data.code
 
   try {
     const supabase = getSupabaseAdmin()

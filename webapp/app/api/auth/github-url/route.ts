@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+
+const querySchema = z.object({
+  device_code: z.string().optional().default('')
+})
 
 // GET - Generate GitHub OAuth URL
 export async function GET(request: NextRequest) {
-  const { searchParams } = request.nextUrl
-  // This is the user_code (short code shown to user)
-  const userCode = searchParams.get('device_code') || ''
+  const result = querySchema.safeParse({
+    device_code: request.nextUrl.searchParams.get('device_code') ?? ''
+  })
+  const userCode = result.success ? result.data.device_code : ''
 
   const clientId = process.env.GITHUB_CLIENT_ID
   if (!clientId) {

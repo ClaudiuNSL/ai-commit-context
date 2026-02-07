@@ -1,20 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { linkCommitSchema, sessionCodeParamSchema, parseBody } from '@/lib/validations'
 
 // POST - Link commit to session
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
-  const { code } = await params
-  const { sha, repoUrl, message } = await request.json()
+  const rawParams = await params
+  const parsedParams = parseBody(sessionCodeParamSchema, rawParams)
 
-  if (!sha) {
+  if (!parsedParams.success) {
+    return NextResponse.json({ error: 'Invalid session code' }, { status: 400 })
+  }
+
+  const { code } = parsedParams.data
+  const body = await request.json()
+  const parsed = parseBody(linkCommitSchema, body)
+
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: 'Missing required field: sha' },
+      { error: 'Validation failed', details: parsed.error },
       { status: 400 }
     )
   }
+
+  const { sha, repoUrl, repoOwner, repoName, message } = parsed.data
+
+  // Build repo URL from owner/name if not provided directly
+  const finalRepoUrl = repoUrl || (repoOwner && repoName ? `https://github.com/${repoOwner}/${repoName}` : '')
 
   try {
     const supabase = getSupabaseAdmin()
@@ -31,18 +45,24 @@ export async function POST(
     }
 
     // Insert or get commit
-    const { data: commit } = await supabase
+    const { data: commit, error: commitError } = await supabase
       .from('commits')
       .upsert(
         {
           sha,
-          repo_url: repoUrl || '',
+          repo_url: finalRepoUrl,
+          repo_owner: repoOwner || '',
+          repo_name: repoName || '',
           message: message || ''
         },
         { onConflict: 'sha,repo_url' }
       )
       .select()
       .single()
+
+    if (commitError) {
+      console.error('Error upserting commit:', commitError)
+    }
 
     if (commit) {
       // Link session to commit

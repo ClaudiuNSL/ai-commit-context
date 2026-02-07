@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { deviceCodeQuerySchema, parseQuery } from '@/lib/validations'
 
 // GET - Poll for device code authorization status
 export async function GET(request: NextRequest) {
-  const deviceCode = request.nextUrl.searchParams.get('device_code')
+  const parsed = parseQuery(deviceCodeQuerySchema, request.nextUrl.searchParams)
 
-  if (!deviceCode) {
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: 'device_code parameter is required' },
+      { error: 'Validation failed', details: parsed.error },
       { status: 400 }
     )
   }
+
+  const deviceCode = parsed.data.device_code
 
   try {
     const supabase = getSupabaseAdmin()

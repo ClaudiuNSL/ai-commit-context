@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import crypto from 'crypto'
+import { createApiKeySchema, deleteApiKeySchema, parseBody } from '@/lib/validations'
 
 // Generate a random API key
 function generateApiKey(): string {
@@ -23,7 +24,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { name } = await request.json().catch(() => ({ name: 'Default' }))
+    const body = await request.json().catch(() => ({}))
+    const parsed = parseBody(createApiKeySchema, body)
+    const name = parsed.success ? parsed.data.name : 'Default'
 
     // Generate new API key
     const apiKey = generateApiKey()
@@ -94,11 +97,14 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = await request.json()
+    const body = await request.json()
+    const parsed = parseBody(deleteApiKeySchema, body)
 
-    if (!id) {
-      return NextResponse.json({ error: 'Missing key id' }, { status: 400 })
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Validation failed', details: parsed.error }, { status: 400 })
     }
+
+    const { id } = parsed.data
 
     const admin = getSupabaseAdmin()
     const { error } = await admin

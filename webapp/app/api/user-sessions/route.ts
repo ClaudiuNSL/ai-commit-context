@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { userIdQuerySchema, parseQuery } from '@/lib/validations'
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = request.nextUrl.searchParams.get('userId')
+    const parsed = parseQuery(userIdQuerySchema, request.nextUrl.searchParams)
 
-    if (!userId) {
-      return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Validation failed', details: parsed.error }, { status: 400 })
     }
+
+    const { userId } = parsed.data
 
     const supabase = getSupabaseAdmin()
 

@@ -24,6 +24,8 @@ export const uploadSessionSchema = z.object({
 export const linkCommitSchema = z.object({
   sha: z.string().min(1, 'sha is required'),
   repoUrl: z.string().optional(),
+  repoOwner: z.string().optional(),
+  repoName: z.string().optional(),
   message: z.string().optional()
 })
 
@@ -38,7 +40,7 @@ export const deleteApiKeySchema = z.object({
 
 // Query parameter schemas
 export const userIdQuerySchema = z.object({
-  userId: z.string().uuid('Invalid userId')
+  userId: z.string().min(1, 'userId is required')
 })
 
 export const codeQuerySchema = z.object({

@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { commitShaParamSchema, parseBody } from '@/lib/validations'
 
 // GET - Get context for a commit
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ sha: string }> }
 ) {
-  const { sha } = await params
+  const rawParams = await params
+  const parsed = parseBody(commitShaParamSchema, rawParams)
+
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid commit SHA' }, { status: 400 })
+  }
+
+  const { sha } = parsed.data
 
   try {
     const supabase = getSupabaseAdmin()
