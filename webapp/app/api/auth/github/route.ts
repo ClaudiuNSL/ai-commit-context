@@ -95,11 +95,13 @@ export async function GET(request: NextRequest) {
     // Generate API key for CLI usage
     const apiKey = generateApiKey()
 
-    // If state contains a user code, update the device_codes row with auth info
+    // If state contains a device code, update the device_codes row with auth info
+    // Try 'code' column first (primary key), then 'user_code' for compatibility
     if (state) {
-      console.log('Looking for device code with user_code:', state)
+      console.log('Looking for device code:', state)
 
-      const { data: updateData, error: updateError } = await supabase
+      // First try code column (primary key - most reliable)
+      let { data: updateData, error: updateError } = await supabase
         .from('device_codes')
         .update({
           status: 'authorized',
@@ -108,10 +110,34 @@ export async function GET(request: NextRequest) {
           username: githubUser.login,
           claimed_at: new Date().toISOString()
         })
-        .eq('user_code', state)
+        .eq('code', state)
         .eq('status', 'pending')
         .gt('expires_at', new Date().toISOString())
         .select()
+
+      console.log('Update by code result:', { count: updateData?.length, error: updateError })
+
+      // If not found, try user_code column (new format like XXXX-XXXX)
+      if (!updateData || updateData.length === 0) {
+        console.log('Not found in code, trying user_code column')
+        const result = await supabase
+          .from('device_codes')
+          .update({
+            status: 'authorized',
+            user_id: userId,
+            api_key: apiKey,
+            username: githubUser.login,
+            claimed_at: new Date().toISOString()
+          })
+          .eq('user_code', state)
+          .eq('status', 'pending')
+          .gt('expires_at', new Date().toISOString())
+          .select()
+
+        updateData = result.data
+        updateError = result.error
+        console.log('Update by user_code result:', { count: updateData?.length, error: updateError })
+      }
 
       console.log('Update result:', { updateData, updateError })
 
@@ -123,7 +149,7 @@ export async function GET(request: NextRequest) {
       }
 
       if (!updateData || updateData.length === 0) {
-        console.error('No device code found for user_code:', state)
+        console.error('No device code found:', state)
         return NextResponse.redirect(
           `${baseUrl}/auth/cli?error=${encodeURIComponent('Device code not found or expired. Please try again.')}`
         )

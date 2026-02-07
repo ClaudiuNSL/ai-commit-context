@@ -58,11 +58,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET - Validate a device code by user_code
+// GET - Validate a device code (checks both user_code and code columns)
 export async function GET(request: NextRequest) {
-  const userCode = request.nextUrl.searchParams.get('code')
+  const codeParam = request.nextUrl.searchParams.get('code')
 
-  if (!userCode) {
+  if (!codeParam) {
     return NextResponse.json(
       { error: 'Code parameter is required' },
       { status: 400 }
@@ -72,11 +72,24 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = getSupabaseAdmin()
 
-    const { data, error } = await supabase
+    // Try user_code first (new format: XXXX-XXXX)
+    let { data, error } = await supabase
       .from('device_codes')
       .select('code, user_code, status, expires_at, user_id, api_key')
-      .eq('user_code', userCode)
+      .eq('user_code', codeParam)
       .single()
+
+    // If not found, try code column (old format: 12D01A71)
+    if (error || !data) {
+      const result = await supabase
+        .from('device_codes')
+        .select('code, user_code, status, expires_at, user_id, api_key')
+        .eq('code', codeParam)
+        .single()
+
+      data = result.data
+      error = result.error
+    }
 
     if (error || !data) {
       return NextResponse.json({
