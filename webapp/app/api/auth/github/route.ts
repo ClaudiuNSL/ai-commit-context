@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
     // Generate API key for CLI usage
     const apiKey = generateApiKey()
 
-    // If state contains a device code, update it with auth info
+    // If state contains a user code, update the device_codes row with auth info
     if (state) {
       const { error: updateError } = await supabase
         .from('device_codes')
@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
           username: githubUser.login,
           claimed_at: new Date().toISOString()
         })
-        .eq('code', state)
+        .eq('user_code', state)
         .eq('status', 'pending')
         .gt('expires_at', new Date().toISOString())
 
@@ -117,9 +117,9 @@ export async function GET(request: NextRequest) {
         )
       }
     } else {
-      // No device code - this shouldn't happen in normal flow
+      // No user code - this shouldn't happen in normal flow
       return NextResponse.redirect(
-        `${baseUrl}/auth/cli?error=${encodeURIComponent('Missing device code')}`
+        `${baseUrl}/auth/cli?error=${encodeURIComponent('Missing authentication code')}`
       )
     }
 

@@ -1,11 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import crypto from 'crypto'
 
-// GET - Validate a device code
+function generateDeviceCode(): string {
+  return crypto.randomBytes(32).toString('base64url')
+}
+
+function generateUserCode(): string {
+  // Generate 8-char alphanumeric code (easier to type)
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // No 0/O/1/I confusion
+  let code = ''
+  for (let i = 0; i < 8; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)]
+  }
+  return code.slice(0, 4) + '-' + code.slice(4)
+}
+
+// POST - Create a new device code for CLI authentication
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = getSupabaseAdmin()
+
+    const deviceCode = generateDeviceCode()
+    const userCode = generateUserCode()
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000) // 15 minutes
+
+    const { error } = await supabase.from('device_codes').insert({
+      code: deviceCode,
+      user_code: userCode,
+      status: 'pending',
+      expires_at: expiresAt.toISOString(),
+    })
+
+    if (error) {
+      console.error('Device code creation error:', error)
+      return NextResponse.json(
+        { error: 'Failed to create device code' },
+        { status: 500 }
+      )
+    }
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://ai-commit-context.vercel.app'
+
+    return NextResponse.json({
+      deviceCode,
+      userCode,
+      verificationUrl: `${baseUrl}/auth/cli?code=${userCode}`,
+      expiresIn: 900, // 15 minutes in seconds
+      interval: 5, // Poll every 5 seconds
+    })
+  } catch (error) {
+    console.error('Device code error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+// GET - Validate a device code by user_code
 export async function GET(request: NextRequest) {
-  const code = request.nextUrl.searchParams.get('code')
+  const userCode = request.nextUrl.searchParams.get('code')
 
-  if (!code) {
+  if (!userCode) {
     return NextResponse.json(
       { error: 'Code parameter is required' },
       { status: 400 }
@@ -17,8 +74,8 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabase
       .from('device_codes')
-      .select('code, status, expires_at, user_id, api_key')
-      .eq('code', code)
+      .select('code, user_code, status, expires_at, user_id, api_key')
+      .eq('user_code', userCode)
       .single()
 
     if (error || !data) {

@@ -31,8 +31,16 @@ import {
   getClaudeProjectsPath,
 } from '../utils/index.js';
 import { uploadSession } from '../upload/index.js';
+import {
+  startDeviceFlow,
+  loadAuth,
+  clearAuth,
+  isAuthenticated,
+} from '../auth/index.js';
 
 const program = new Command();
+
+const API_BASE_URL = process.env.ACC_API_URL || 'https://ai-commit-context.vercel.app';
 
 program
   .name('acc')
@@ -77,6 +85,94 @@ program
     console.log('  1. Start working with Claude Code as usual');
     console.log('  2. Your commits will automatically include AI context');
     console.log('  3. Run', chalk.cyan('acc sessions list'), 'to see indexed sessions');
+  });
+
+// =============================================================================
+// LOGIN COMMAND
+// =============================================================================
+
+program
+  .command('login')
+  .description('Authenticate with AI Commit Context')
+  .action(async () => {
+    if (isAuthenticated()) {
+      const auth = loadAuth();
+      console.log(chalk.yellow('Already logged in as'), chalk.cyan(auth?.username || 'unknown'));
+      console.log('Run', chalk.cyan('acc logout'), 'to sign out first.');
+      return;
+    }
+
+    console.log(chalk.blue('Starting authentication...'));
+    console.log();
+
+    const result = await startDeviceFlow(
+      API_BASE_URL,
+      (url, userCode) => {
+        console.log('Open this URL in your browser:');
+        console.log();
+        console.log('  ', chalk.cyan(url));
+        console.log();
+        console.log('Your code:', chalk.bold.yellow(userCode));
+        console.log();
+        process.stdout.write('Waiting for authentication');
+      },
+      () => {
+        process.stdout.write('.');
+      }
+    );
+
+    console.log();
+
+    if (result.success) {
+      console.log();
+      console.log(chalk.green('✓'), 'Successfully logged in as', chalk.cyan(result.username));
+    } else {
+      console.log(chalk.red('✗'), 'Login failed:', result.error);
+      process.exit(1);
+    }
+  });
+
+// =============================================================================
+// LOGOUT COMMAND
+// =============================================================================
+
+program
+  .command('logout')
+  .description('Sign out of AI Commit Context')
+  .action(() => {
+    if (!isAuthenticated()) {
+      console.log(chalk.yellow('Not logged in.'));
+      return;
+    }
+
+    const auth = loadAuth();
+    clearAuth();
+    console.log(chalk.green('✓'), 'Logged out successfully');
+    if (auth?.username) {
+      console.log('  Was logged in as:', chalk.cyan(auth.username));
+    }
+  });
+
+// =============================================================================
+// WHOAMI COMMAND
+// =============================================================================
+
+program
+  .command('whoami')
+  .description('Show current user')
+  .action(() => {
+    const auth = loadAuth();
+
+    if (!auth || !auth.apiKey) {
+      console.log(chalk.yellow('Not logged in.'));
+      console.log('Run', chalk.cyan('acc login'), 'to authenticate.');
+      return;
+    }
+
+    console.log(chalk.bold('Current User:'));
+    console.log('  Username:', chalk.cyan(auth.username || 'unknown'));
+    console.log('  User ID: ', chalk.gray(auth.userId || 'unknown'));
+    console.log('  Since:   ', auth.authenticatedAt ? new Date(auth.authenticatedAt).toLocaleString() : 'unknown');
   });
 
 // =============================================================================

@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 // GET - Generate GitHub OAuth URL
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
-  const deviceCode = searchParams.get('device_code') || ''
+  // This is the user_code (short code shown to user)
+  const userCode = searchParams.get('device_code') || ''
 
   const clientId = process.env.GITHUB_CLIENT_ID
   if (!clientId) {
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
   githubAuthUrl.searchParams.set('client_id', clientId)
   githubAuthUrl.searchParams.set('redirect_uri', redirectUri)
   githubAuthUrl.searchParams.set('scope', 'read:user user:email')
-  githubAuthUrl.searchParams.set('state', deviceCode)
+  githubAuthUrl.searchParams.set('state', userCode)
 
   return NextResponse.json({ url: githubAuthUrl.toString() })
 }
