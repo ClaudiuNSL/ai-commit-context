@@ -3,6 +3,8 @@ name: AI Commit Context
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -10,13 +12,15 @@ permissions:
   statuses: write
 
 jobs:
+  # Annotate PRs with AI conversation links
   annotate:
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Needed to access commit messages
+          fetch-depth: 0
 
       - name: Annotate PR with AI Context
         uses: ./github-action
@@ -24,3 +28,34 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           api-url: 'https://ai-commit-context.vercel.app'
 
+  # Link commits to sessions on push to main
+  link-commits:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 5
+
+      - name: Link commits to AI sessions
+        run: |
+          echo "Checking recent commits for AI-Context-ID trailers..."
+
+          git log --format="%H %s" -n 5
+
+          for sha in $(git log --format=%H -n 5); do
+            context_id=$(git log -1 --format=%B $sha | grep -oP 'AI-Context-ID:\s*\K\S+' || true)
+
+            if [ -n "$context_id" ]; then
+              echo "Found AI-Context-ID: $context_id in commit ${sha:0:7}"
+
+              curl -s -X POST "https://ai-commit-context.vercel.app/api/sessions/$context_id/commits" \
+                -H "Content-Type: application/json" \
+                -d "{\"sha\": \"$sha\", \"repoOwner\": \"${{ github.repository_owner }}\", \"repoName\": \"${{ github.event.repository.name }}\"}" \
+                && echo " -> Linked successfully" \
+                || echo " -> Failed to link"
+            fi
+          done
+
+          echo "Done!"
