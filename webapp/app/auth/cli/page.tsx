@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { Github, Terminal, Check, AlertCircle, Loader2, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
@@ -71,30 +70,23 @@ function CLIAuthContent() {
     validateCode()
   }, [deviceCode, successParam, errorParam])
 
-  const handleSignIn = async () => {
+  const handleSignIn = () => {
     setIsAuthenticating(true)
 
-    const supabase = createClient()
-    const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
+    // Use direct GitHub OAuth instead of Supabase Auth
+    const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID
+    const redirectUri = `${window.location.origin}/api/auth/github`
 
-    // Include device code in state to pass through OAuth flow
-    const callbackUrl = new URL('/api/auth/cli/callback', appUrl)
-    if (deviceCode) {
-      callbackUrl.searchParams.set('device_code', deviceCode)
-    }
+    // Pass device code as state parameter
+    const state = deviceCode || ''
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'github',
-      options: {
-        redirectTo: callbackUrl.toString(),
-        scopes: 'read:user user:email',
-      },
-    })
+    const githubAuthUrl = new URL('https://github.com/login/oauth/authorize')
+    githubAuthUrl.searchParams.set('client_id', clientId || '')
+    githubAuthUrl.searchParams.set('redirect_uri', redirectUri)
+    githubAuthUrl.searchParams.set('scope', 'read:user user:email')
+    githubAuthUrl.searchParams.set('state', state)
 
-    if (error) {
-      setIsAuthenticating(false)
-      setState('error')
-    }
+    window.location.href = githubAuthUrl.toString()
   }
 
   if (state === 'loading') {
