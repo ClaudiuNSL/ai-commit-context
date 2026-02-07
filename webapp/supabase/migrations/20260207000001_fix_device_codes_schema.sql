@@ -1,27 +1,21 @@
--- Migration: Fix device_codes table schema and add profiles table
+-- Migration: Fix device_codes table schema
 -- Date: 2026-02-07
 
--- Create profiles table for GitHub-authenticated users
-CREATE TABLE IF NOT EXISTS profiles (
-  id TEXT PRIMARY KEY,                    -- Format: github_<github_user_id>
-  github_id BIGINT UNIQUE,                -- GitHub numeric user ID
-  github_username TEXT,                   -- GitHub login
-  email TEXT,
-  name TEXT,
-  avatar_url TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- Add missing columns to profiles table if they don't exist
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS github_id BIGINT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS github_username TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS name TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- Create index for faster lookups by github_id
 CREATE INDEX IF NOT EXISTS idx_profiles_github_id ON profiles(github_id);
 
--- Add comments
-COMMENT ON TABLE profiles IS 'User profiles from GitHub OAuth';
-COMMENT ON COLUMN profiles.id IS 'Custom ID in format github_<numeric_id>';
+-- Drop policy that depends on user_id column
+DROP POLICY IF EXISTS "Users can view own device codes" ON device_codes;
 
--- Drop the foreign key constraint since we use custom user IDs (github_123)
--- First check if the constraint exists and drop it
+-- Drop the foreign key constraint on device_codes since we use custom user IDs (github_123)
 DO $$
 BEGIN
   IF EXISTS (
@@ -34,7 +28,7 @@ BEGIN
 END $$;
 
 -- Change user_id column type from UUID to TEXT to support github_xxx format
-ALTER TABLE device_codes ALTER COLUMN user_id TYPE TEXT;
+ALTER TABLE device_codes ALTER COLUMN user_id TYPE TEXT USING user_id::TEXT;
 
 -- Add username column for storing GitHub username
 ALTER TABLE device_codes ADD COLUMN IF NOT EXISTS username TEXT;
@@ -47,9 +41,9 @@ ALTER TABLE device_codes DROP CONSTRAINT IF EXISTS device_codes_status_check;
 ALTER TABLE device_codes ADD CONSTRAINT device_codes_status_check
   CHECK (status IN ('pending', 'authorized', 'consumed', 'expired'));
 
--- Add comments
-COMMENT ON COLUMN device_codes.username IS 'GitHub username of authenticated user';
-COMMENT ON COLUMN device_codes.claimed_at IS 'Timestamp when OAuth was completed';
+-- Drop policies that depend on api_keys.user_id column
+DROP POLICY IF EXISTS "Users can view own keys" ON api_keys;
+DROP POLICY IF EXISTS "Users can delete own keys" ON api_keys;
 
 -- Fix api_keys table to use TEXT user_id instead of UUID
 DO $$
@@ -64,8 +58,10 @@ BEGIN
 END $$;
 
 ALTER TABLE api_keys ALTER COLUMN user_id TYPE TEXT USING user_id::TEXT;
-ALTER TABLE api_keys ALTER COLUMN user_id DROP NOT NULL;
 
--- Add reference to profiles table
--- Note: Not using foreign key to avoid migration order issues
-COMMENT ON COLUMN api_keys.user_id IS 'References profiles.id (format: github_xxx)';
+DO $$
+BEGIN
+  ALTER TABLE api_keys ALTER COLUMN user_id DROP NOT NULL;
+EXCEPTION
+  WHEN others THEN NULL;
+END $$;
