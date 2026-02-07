@@ -97,7 +97,9 @@ export async function GET(request: NextRequest) {
 
     // If state contains a user code, update the device_codes row with auth info
     if (state) {
-      const { error: updateError } = await supabase
+      console.log('Looking for device code with user_code:', state)
+
+      const { data: updateData, error: updateError } = await supabase
         .from('device_codes')
         .update({
           status: 'authorized',
@@ -109,11 +111,21 @@ export async function GET(request: NextRequest) {
         .eq('user_code', state)
         .eq('status', 'pending')
         .gt('expires_at', new Date().toISOString())
+        .select()
+
+      console.log('Update result:', { updateData, updateError })
 
       if (updateError) {
         console.error('Device code update error:', updateError)
         return NextResponse.redirect(
           `${baseUrl}/auth/cli?error=${encodeURIComponent('Failed to complete authentication')}`
+        )
+      }
+
+      if (!updateData || updateData.length === 0) {
+        console.error('No device code found for user_code:', state)
+        return NextResponse.redirect(
+          `${baseUrl}/auth/cli?error=${encodeURIComponent('Device code not found or expired. Please try again.')}`
         )
       }
     } else {
