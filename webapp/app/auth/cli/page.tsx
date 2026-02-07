@@ -98,6 +98,16 @@ function CLIAuthContent() {
     )
   }
 
+  // Auto-redirect to dashboard after successful auth
+  useEffect(() => {
+    if (state === 'success') {
+      const timer = setTimeout(() => {
+        window.location.href = '/dashboard'
+      }, 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [state])
+
   if (state === 'success') {
     return (
       <div className="min-h-screen flex flex-col">
@@ -120,17 +130,19 @@ function CLIAuthContent() {
 
               <h1 className="text-2xl font-bold mb-2">CLI Authenticated</h1>
               <p className="text-slate-400 mb-6">
-                Your CLI is now connected to your account. You can close this window and return to your terminal.
+                Your CLI is now connected to your account. Redirecting to dashboard...
               </p>
 
-              <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
-                <p className="text-sm text-slate-300">
-                  The CLI should automatically detect the authentication. If not, try running:
-                </p>
-                <code className="block mt-2 text-sky-400 font-mono text-sm">
-                  acc auth status
-                </code>
-              </div>
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center justify-center gap-2 w-full bg-sky-600 hover:bg-sky-500 text-white font-medium py-3 px-4 rounded-lg transition-colors mb-4"
+              >
+                Go to Dashboard
+              </Link>
+
+              <p className="text-sm text-slate-500">
+                Or close this window and return to your terminal
+              </p>
             </div>
           </div>
         </div>
