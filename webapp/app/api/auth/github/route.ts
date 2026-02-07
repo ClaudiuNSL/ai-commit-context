@@ -143,10 +143,10 @@ export async function GET(request: NextRequest) {
       const { error: updateError } = await supabase
         .from('device_codes')
         .update({
-          status: 'claimed',
+          status: 'authorized',
           user_id: userId,
           api_key: apiKey, // Store temporarily for polling
-          github_username: githubUser.login,
+          username: githubUser.login,
           claimed_at: new Date().toISOString()
         })
         .eq('code', state)

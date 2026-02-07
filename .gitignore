@@ -36,7 +36,7 @@ server/data/
 
 # Build outputs in subfolders
 server/dist/
-github-action/dist/
+# Note: github-action/dist/ is NOT ignored - required for GitHub Action to work
 github-action/lib/
 
 # Next.js
