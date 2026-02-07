@@ -44,32 +44,56 @@ export async function POST(
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
 
-    // Insert or get commit
-    const { data: commit, error: commitError } = await supabase
+    // First try to find existing commit
+    const { data: existingCommit } = await supabase
       .from('commits')
-      .upsert(
-        {
+      .select('id')
+      .eq('sha', sha)
+      .maybeSingle()
+
+    let commitId: string
+
+    if (existingCommit) {
+      commitId = existingCommit.id
+    } else {
+      // Insert new commit
+      const { data: newCommit, error: insertError } = await supabase
+        .from('commits')
+        .insert({
           sha,
           repo_url: finalRepoUrl,
           repo_owner: repoOwner || '',
           repo_name: repoName || '',
           message: message || ''
-        },
-        { onConflict: 'sha,repo_url' }
-      )
-      .select()
-      .single()
+        })
+        .select('id')
+        .single()
 
-    if (commitError) {
-      console.error('Error upserting commit:', commitError)
+      if (insertError || !newCommit) {
+        console.error('Error inserting commit:', insertError)
+        return NextResponse.json({
+          error: 'Failed to create commit',
+          details: insertError?.message
+        }, { status: 500 })
+      }
+
+      commitId = newCommit.id
     }
 
-    if (commit) {
-      // Link session to commit
-      await supabase.from('session_commits').upsert({
+    // Link session to commit
+    const { error: linkError } = await supabase
+      .from('session_commits')
+      .upsert({
         session_id: session.id,
-        commit_id: commit.id
-      })
+        commit_id: commitId
+      }, { onConflict: 'session_id,commit_id' })
+
+    if (linkError) {
+      console.error('Error linking commit:', linkError)
+      return NextResponse.json({
+        error: 'Failed to link commit',
+        details: linkError?.message
+      }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
