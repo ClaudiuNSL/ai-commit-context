@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     const authHeader = request.headers.get('Authorization')
     const userId = await verifyApiKey(authHeader)
 
-    const { sessionId, projectName, startedAt, endedAt, messages, filesModified } =
+    const { sessionId, projectName, startedAt, endedAt, messages, filesModified, repos } =
       await request.json()
 
     if (!sessionId || !messages) {
@@ -30,6 +30,18 @@ export async function POST(request: NextRequest) {
         .upsert({ id: userId }, { onConflict: 'id' })
     }
 
+    // Extract first user message for preview
+    let firstUserMessage: string | null = null
+    for (const m of messages) {
+      if (m.role === 'user' && m.content) {
+        const text = typeof m.content === 'string' ? m.content : ''
+        if (text.trim()) {
+          firstUserMessage = text.length > 100 ? text.substring(0, 97) + '...' : text
+          break
+        }
+      }
+    }
+
     const { data, error } = await supabase
       .from('sessions')
       .insert({
@@ -40,6 +52,8 @@ export async function POST(request: NextRequest) {
         message_count: messages.length,
         messages: messages,
         files_modified: filesModified || [],
+        repos: repos || null,
+        first_user_message: firstUserMessage,
         privacy: 'unlisted',
         user_id: userId || null
       })

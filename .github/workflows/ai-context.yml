@@ -1,0 +1,26 @@
+name: AI Commit Context
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  statuses: write
+
+jobs:
+  annotate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Needed to access commit messages
+
+      - name: Annotate PR with AI Context
+        uses: ./github-action
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          api-url: 'https://ai-commit-context.vercel.app'
+

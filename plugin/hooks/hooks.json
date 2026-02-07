@@ -1,0 +1,26 @@
+{
+  "hooks": [
+    {
+      "event": "SessionStart",
+      "script": "scripts/session-tracker.js",
+      "args": ["init"],
+      "description": "Initialize session tracking when Claude Code starts"
+    },
+    {
+      "event": "PostToolUse",
+      "matcher": {
+        "tool_name": ["Write", "Edit", "Bash"]
+      },
+      "script": "scripts/session-tracker.js",
+      "args": ["track"],
+      "stdin": true,
+      "description": "Track file modifications from Write, Edit, and Bash tools"
+    },
+    {
+      "event": "Stop",
+      "script": "scripts/session-tracker.js",
+      "args": ["cleanup"],
+      "description": "Archive and clean up session state when Claude Code stops"
+    }
+  ]
+}
