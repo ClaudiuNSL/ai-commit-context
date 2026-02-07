@@ -24,6 +24,7 @@ function generateApiKey(): string {
 }
 
 // GET - GitHub OAuth callback for device flow
+// v2 - fixed update logic
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const code = searchParams.get('code')
