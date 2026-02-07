@@ -42,13 +42,13 @@ export async function GET(request: NextRequest) {
   if (error) {
     console.error('GitHub OAuth error:', error, errorDescription)
     return NextResponse.redirect(
-      `${baseUrl}/auth/device/error?error=${encodeURIComponent(errorDescription || error)}`
+      `${baseUrl}/auth/cli?error=${encodeURIComponent(errorDescription || error)}`
     )
   }
 
   if (!code) {
     return NextResponse.redirect(
-      `${baseUrl}/auth/device/error?error=${encodeURIComponent('Missing authorization code')}`
+      `${baseUrl}/auth/cli?error=${encodeURIComponent('Missing authorization code')}`
     )
   }
 
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
     if (tokenData.error) {
       console.error('GitHub token exchange error:', tokenData.error, tokenData.error_description)
       return NextResponse.redirect(
-        `${baseUrl}/auth/device/error?error=${encodeURIComponent(tokenData.error_description || tokenData.error)}`
+        `${baseUrl}/auth/cli?error=${encodeURIComponent(tokenData.error_description || tokenData.error)}`
       )
     }
 
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
     if (!userResponse.ok) {
       console.error('GitHub user fetch error:', userResponse.status, await userResponse.text())
       return NextResponse.redirect(
-        `${baseUrl}/auth/device/error?error=${encodeURIComponent('Failed to fetch GitHub user info')}`
+        `${baseUrl}/auth/cli?error=${encodeURIComponent('Failed to fetch GitHub user info')}`
       )
     }
 
@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
     if (profileError) {
       console.error('Profile upsert error:', profileError)
       return NextResponse.redirect(
-        `${baseUrl}/auth/device/error?error=${encodeURIComponent('Failed to create user profile')}`
+        `${baseUrl}/auth/cli?error=${encodeURIComponent('Failed to create user profile')}`
       )
     }
 
@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
     if (keyError) {
       console.error('API key creation error:', keyError)
       return NextResponse.redirect(
-        `${baseUrl}/auth/device/error?error=${encodeURIComponent('Failed to generate API key')}`
+        `${baseUrl}/auth/cli?error=${encodeURIComponent('Failed to generate API key')}`
       )
     }
 
@@ -161,13 +161,13 @@ export async function GET(request: NextRequest) {
 
     // Redirect to success page
     return NextResponse.redirect(
-      `${baseUrl}/auth/device/success?username=${encodeURIComponent(githubUser.login)}`
+      `${baseUrl}/auth/cli?success=true&username=${encodeURIComponent(githubUser.login)}`
     )
   } catch (error) {
     console.error('GitHub OAuth callback error:', error)
     const message = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.redirect(
-      `${baseUrl}/auth/device/error?error=${encodeURIComponent(message)}`
+      `${baseUrl}/auth/cli?error=${encodeURIComponent(message)}`
     )
   }
 }
