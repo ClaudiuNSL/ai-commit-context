@@ -131,6 +131,55 @@ CREATE POLICY "Anyone can link commits"
     WITH CHECK (true);
 
 -- ============================================================================
+-- API_KEYS TABLE (for CLI authentication)
+-- ============================================================================
+CREATE TABLE public.api_keys (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id TEXT NOT NULL,
+    key_hash TEXT NOT NULL,
+    name TEXT DEFAULT 'CLI Key',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    last_used_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_api_keys_user_id ON public.api_keys(user_id);
+CREATE INDEX idx_api_keys_key_hash ON public.api_keys(key_hash);
+
+-- Enable RLS (service role bypasses for API operations)
+ALTER TABLE public.api_keys ENABLE ROW LEVEL SECURITY;
+
+COMMENT ON TABLE public.api_keys IS 'Stores API keys for CLI authentication';
+COMMENT ON COLUMN public.api_keys.user_id IS 'User ID in format github_XXXXX';
+COMMENT ON COLUMN public.api_keys.key_hash IS 'Hashed API key for verification';
+
+-- ============================================================================
+-- DEVICE_CODES TABLE (for CLI OAuth flow)
+-- ============================================================================
+CREATE TABLE public.device_codes (
+    code TEXT PRIMARY KEY,
+    user_id TEXT,
+    user_code TEXT,
+    api_key TEXT,
+    username TEXT,
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'authorized', 'consumed', 'expired')),
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    claimed_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_device_codes_expires_at ON public.device_codes(expires_at);
+CREATE INDEX idx_device_codes_status ON public.device_codes(status);
+
+-- Enable RLS (service role bypasses for API operations)
+ALTER TABLE public.device_codes ENABLE ROW LEVEL SECURITY;
+
+COMMENT ON TABLE public.device_codes IS 'Stores device codes for CLI OAuth flow';
+COMMENT ON COLUMN public.device_codes.code IS '8-character device code shown to user';
+COMMENT ON COLUMN public.device_codes.user_id IS 'User ID in format github_XXXXX after OAuth';
+COMMENT ON COLUMN public.device_codes.api_key IS 'Generated API key after OAuth completion';
+COMMENT ON COLUMN public.device_codes.expires_at IS 'Code expiration (10 minutes from creation)';
+
+-- ============================================================================
 -- INDEXES
 -- ============================================================================
 CREATE INDEX idx_sessions_short_code ON public.sessions(short_code);
