@@ -24,7 +24,9 @@ function generateApiKey(): string {
 }
 
 // GET - GitHub OAuth callback for device flow
-// v2 - fixed update logic
+// v3 - with debug logging
+const CALLBACK_VERSION = 'v3-debug'
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const code = searchParams.get('code')
@@ -153,9 +155,9 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Redirect to success page
+    // Redirect to success page with debug info
     return NextResponse.redirect(
-      `${baseUrl}/auth/cli?success=true&username=${encodeURIComponent(githubUser.login)}`
+      `${baseUrl}/auth/cli?success=true&username=${encodeURIComponent(githubUser.login)}&v=${CALLBACK_VERSION}&state=${encodeURIComponent(state || 'none')}`
     )
   } catch (error) {
     console.error('GitHub OAuth callback error:', error)
