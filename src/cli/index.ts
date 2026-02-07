@@ -390,6 +390,68 @@ program
   });
 
 // =============================================================================
+// SYNC COMMAND
+// =============================================================================
+
+program
+  .command('sync')
+  .description('Scan and upload the active session (for use before commits)')
+  .option('--quiet', 'Only output the session URL')
+  .action(async (options) => {
+    // 1. Scan for new sessions
+    if (!options.quiet) {
+      process.stdout.write('Scanning sessions... ');
+    }
+    const claudePath = getClaudeProjectsPath();
+    await scanAllSessions(claudePath);
+    if (!options.quiet) {
+      console.log(chalk.green('✓'));
+    }
+
+    // 2. Get active session
+    const session = getActiveSession();
+    if (!session) {
+      if (!options.quiet) {
+        console.log(chalk.yellow('No active session found.'));
+      }
+      process.exit(1);
+    }
+
+    // 3. If already uploaded, return the URL
+    if (session.uploaded && session.uploadUrl) {
+      if (options.quiet) {
+        console.log(session.uploadUrl);
+      } else {
+        console.log(chalk.green('✓'), 'Session already uploaded');
+        console.log('  URL:', chalk.blue(session.uploadUrl));
+      }
+      return;
+    }
+
+    // 4. Upload the session
+    if (!options.quiet) {
+      process.stdout.write(`Uploading session ${shortId(session.id)}... `);
+    }
+
+    const result = await uploadSession(session.id);
+
+    if (result.success) {
+      if (options.quiet) {
+        console.log(result.url);
+      } else {
+        console.log(chalk.green('✓'));
+        console.log('  URL:', chalk.blue(result.url));
+        console.log('  Code:', chalk.cyan(result.shortCode));
+      }
+    } else {
+      if (!options.quiet) {
+        console.log(chalk.red('✗'), result.error);
+      }
+      process.exit(1);
+    }
+  });
+
+// =============================================================================
 // UPLOAD COMMAND
 // =============================================================================
 

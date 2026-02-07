@@ -70,6 +70,16 @@ function CLIAuthContent() {
     validateCode()
   }, [deviceCode, successParam, errorParam])
 
+  // Auto-redirect to dashboard after successful auth
+  useEffect(() => {
+    if (state === 'success') {
+      const timer = setTimeout(() => {
+        window.location.href = '/dashboard'
+      }, 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [state])
+
   const handleSignIn = async () => {
     setIsAuthenticating(true)
 
@@ -97,16 +107,6 @@ function CLIAuthContent() {
       </div>
     )
   }
-
-  // Auto-redirect to dashboard after successful auth
-  useEffect(() => {
-    if (state === 'success') {
-      const timer = setTimeout(() => {
-        window.location.href = '/dashboard'
-      }, 3000)
-      return () => clearTimeout(timer)
-    }
-  }, [state])
 
   if (state === 'success') {
     return (

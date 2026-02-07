@@ -5,29 +5,27 @@ import { getActiveSession, getSessionFiles, insertSessionCommit } from '../db/in
 
 const PREPARE_COMMIT_MSG_HOOK = `#!/bin/sh
 # AI Commit Context - prepare-commit-msg hook
-# This hook adds AI context trailers to commit messages
+# This hook syncs and adds AI context trailers to commit messages
 
-# Get active session from acc
-SESSION_ID=$(acc sessions active --format=id 2>/dev/null)
+# Sync: scan + upload active session (quiet mode returns URL)
+SESSION_URL=$(acc sync --quiet 2>/dev/null)
 
-if [ -n "$SESSION_ID" ]; then
+if [ -n "$SESSION_URL" ]; then
+    # Get session ID
+    SESSION_ID=$(acc sessions active --format=id 2>/dev/null)
+
     # Get staged files
     STAGED_FILES=$(git diff --cached --name-only)
 
-    if [ -n "$STAGED_FILES" ]; then
+    if [ -n "$STAGED_FILES" ] && [ -n "$SESSION_ID" ]; then
         # Check if any staged files were touched by the session
         MATCHED=$(acc sessions check-files "$SESSION_ID" $STAGED_FILES 2>/dev/null)
 
         if [ -n "$MATCHED" ]; then
-            # Get session URL (if uploaded)
-            SESSION_URL=$(acc sessions url "$SESSION_ID" 2>/dev/null)
-
             # Append trailers to commit message
             echo "" >> "$1"
             echo "AI-Context-ID: $SESSION_ID" >> "$1"
-            if [ -n "$SESSION_URL" ]; then
-                echo "AI-Context-URL: $SESSION_URL" >> "$1"
-            fi
+            echo "AI-Context-URL: $SESSION_URL" >> "$1"
         fi
     fi
 fi
