@@ -23,11 +23,6 @@ function generateApiKey(): string {
   return `acc_${crypto.randomBytes(24).toString('base64url')}`
 }
 
-// Hash the API key for storage
-function hashApiKey(key: string): string {
-  return crypto.createHash('sha256').update(key).digest('hex')
-}
-
 // GET - GitHub OAuth callback for device flow
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -95,57 +90,19 @@ export async function GET(request: NextRequest) {
     const githubUser: GitHubUser = await userResponse.json()
 
     const supabase = getSupabaseAdmin()
-
-    // Create or update user in profiles table
-    // Use GitHub user ID as the unique identifier
     const userId = `github_${githubUser.id}`
-
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert({
-        id: userId,
-        github_id: githubUser.id,
-        github_username: githubUser.login,
-        email: githubUser.email,
-        name: githubUser.name,
-        avatar_url: githubUser.avatar_url,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'id' })
-
-    if (profileError) {
-      console.error('Profile upsert error:', profileError)
-      return NextResponse.redirect(
-        `${baseUrl}/auth/cli?error=${encodeURIComponent('Failed to create user profile')}`
-      )
-    }
 
     // Generate API key for CLI usage
     const apiKey = generateApiKey()
-    const keyHash = hashApiKey(apiKey)
 
-    const { error: keyError } = await supabase
-      .from('api_keys')
-      .insert({
-        user_id: userId,
-        key_hash: keyHash,
-        name: 'CLI Device Auth'
-      })
-
-    if (keyError) {
-      console.error('API key creation error:', keyError)
-      return NextResponse.redirect(
-        `${baseUrl}/auth/cli?error=${encodeURIComponent('Failed to generate API key')}`
-      )
-    }
-
-    // If state contains a device code, link the API key to it
+    // If state contains a device code, update it with auth info
     if (state) {
       const { error: updateError } = await supabase
         .from('device_codes')
         .update({
           status: 'authorized',
           user_id: userId,
-          api_key: apiKey, // Store temporarily for polling
+          api_key: apiKey,
           username: githubUser.login,
           claimed_at: new Date().toISOString()
         })
@@ -155,8 +112,15 @@ export async function GET(request: NextRequest) {
 
       if (updateError) {
         console.error('Device code update error:', updateError)
-        // Don't fail the flow, just log the error
+        return NextResponse.redirect(
+          `${baseUrl}/auth/cli?error=${encodeURIComponent('Failed to complete authentication')}`
+        )
       }
+    } else {
+      // No device code - this shouldn't happen in normal flow
+      return NextResponse.redirect(
+        `${baseUrl}/auth/cli?error=${encodeURIComponent('Missing device code')}`
+      )
     }
 
     // Redirect to success page
