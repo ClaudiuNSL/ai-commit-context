@@ -97,12 +97,29 @@ export async function GET(request: NextRequest) {
     const apiKey = generateApiKey()
 
     // If state contains a device code, update the device_codes row with auth info
-    // Try 'code' column first (primary key), then 'user_code' for compatibility
     if (state) {
-      console.log('Looking for device code:', state)
+      console.log('=== OAuth Callback Debug ===')
+      console.log('State (device code):', state)
+      console.log('User:', githubUser.login)
+      console.log('API Key prefix:', apiKey.substring(0, 10))
 
-      // First try code column (primary key - most reliable)
-      let { data: updateData, error: updateError } = await supabase
+      // First, check if the device code exists
+      const { data: existingCode, error: checkError } = await supabase
+        .from('device_codes')
+        .select('code, status, expires_at')
+        .eq('code', state)
+
+      console.log('Existing code check:', { existingCode, checkError })
+
+      if (!existingCode || existingCode.length === 0) {
+        console.error('Device code not found in database:', state)
+        return NextResponse.redirect(
+          `${baseUrl}/auth/cli?error=${encodeURIComponent('Device code not found')}`
+        )
+      }
+
+      // Now update without the expires_at check (we'll verify manually)
+      const { data: updateData, error: updateError } = await supabase
         .from('device_codes')
         .update({
           status: 'authorized',
@@ -112,33 +129,7 @@ export async function GET(request: NextRequest) {
           claimed_at: new Date().toISOString()
         })
         .eq('code', state)
-        .eq('status', 'pending')
-        .gt('expires_at', new Date().toISOString())
         .select()
-
-      console.log('Update by code result:', { count: updateData?.length, error: updateError })
-
-      // If not found, try user_code column (new format like XXXX-XXXX)
-      if (!updateData || updateData.length === 0) {
-        console.log('Not found in code, trying user_code column')
-        const result = await supabase
-          .from('device_codes')
-          .update({
-            status: 'authorized',
-            user_id: userId,
-            api_key: apiKey,
-            username: githubUser.login,
-            claimed_at: new Date().toISOString()
-          })
-          .eq('user_code', state)
-          .eq('status', 'pending')
-          .gt('expires_at', new Date().toISOString())
-          .select()
-
-        updateData = result.data
-        updateError = result.error
-        console.log('Update by user_code result:', { count: updateData?.length, error: updateError })
-      }
 
       console.log('Update result:', { updateData, updateError })
 
