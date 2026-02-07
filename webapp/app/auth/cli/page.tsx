@@ -70,23 +70,24 @@ function CLIAuthContent() {
     validateCode()
   }, [deviceCode, successParam, errorParam])
 
-  const handleSignIn = () => {
+  const handleSignIn = async () => {
     setIsAuthenticating(true)
 
-    // Use direct GitHub OAuth instead of Supabase Auth
-    const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID
-    const redirectUri = `${window.location.origin}/api/auth/github`
+    try {
+      // Get GitHub OAuth URL from API (server-side has the client ID)
+      const response = await fetch(`/api/auth/github-url?device_code=${encodeURIComponent(deviceCode || '')}`)
+      const data = await response.json()
 
-    // Pass device code as state parameter
-    const state = deviceCode || ''
-
-    const githubAuthUrl = new URL('https://github.com/login/oauth/authorize')
-    githubAuthUrl.searchParams.set('client_id', clientId || '')
-    githubAuthUrl.searchParams.set('redirect_uri', redirectUri)
-    githubAuthUrl.searchParams.set('scope', 'read:user user:email')
-    githubAuthUrl.searchParams.set('state', state)
-
-    window.location.href = githubAuthUrl.toString()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        setState('error')
+        setIsAuthenticating(false)
+      }
+    } catch {
+      setState('error')
+      setIsAuthenticating(false)
+    }
   }
 
   if (state === 'loading') {
