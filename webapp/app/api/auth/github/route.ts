@@ -112,21 +112,14 @@ export async function GET(request: NextRequest) {
 
     // If state contains a device code, update the device_codes row with auth info
     if (state) {
-      console.log('=== OAuth Callback Debug ===')
-      console.log('State (device code):', state)
-      console.log('User:', githubUser.login)
-      console.log('API Key prefix:', apiKey.substring(0, 10))
-
       // First, check if the device code exists
       const { data: existingCode, error: checkError } = await supabase
         .from('device_codes')
         .select('code, status, expires_at')
         .eq('code', state)
 
-      console.log('Existing code check:', { existingCode, checkError })
-
       if (!existingCode || existingCode.length === 0) {
-        console.error('Device code not found in database:', state)
+        console.error('Device code not found in database')
         return NextResponse.redirect(
           `${baseUrl}/auth/cli?error=${encodeURIComponent('Device code not found')}`
         )
@@ -145,10 +138,8 @@ export async function GET(request: NextRequest) {
         .eq('code', state)
         .select()
 
-      console.log('Update result:', { updateData, updateError })
-
       if (updateError) {
-        console.error('Device code update error:', updateError)
+        console.error('Device code update error')
         return NextResponse.redirect(
           `${baseUrl}/auth/cli?error=${encodeURIComponent('Failed to complete authentication')}`
         )

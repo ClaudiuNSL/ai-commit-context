@@ -54,7 +54,7 @@ interface UploadResult {
  */
 export async function uploadSession(sessionId: string): Promise<UploadResult> {
   const config = loadConfig();
-  const apiUrl = config.auth.apiUrl || 'https://ai-commit-context.vercel.app';
+  const apiUrl = config.auth.apiUrl || 'https://aicommitcontext.dev';
 
   // Get session from local DB
   const session = getSession(sessionId);
@@ -163,7 +163,7 @@ export async function linkCommitRemote(
   message: string
 ): Promise<UploadResult> {
   const config = loadConfig();
-  const apiUrl = config.auth.apiUrl || 'https://ai-commit-context.vercel.app';
+  const apiUrl = config.auth.apiUrl || 'https://aicommitcontext.dev';
 
   try {
     const url = `${apiUrl}/api/sessions/${sessionCode}/commits`;
