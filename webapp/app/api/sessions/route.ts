@@ -3,9 +3,28 @@ import { nanoid } from 'nanoid'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { verifyApiKey } from '@/lib/api-auth'
 import { uploadSessionSchema, parseBody } from '@/lib/validations'
+import { checkRateLimit, getClientIp, RATE_LIMITS } from '@/lib/rate-limit'
 
 // POST - Upload session (from CLI)
 export async function POST(request: NextRequest) {
+  // Rate limiting
+  const clientIp = getClientIp(request)
+  const rateLimit = checkRateLimit(`session-upload:${clientIp}`, RATE_LIMITS.sessionUpload)
+
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Try again later.' },
+      {
+        status: 429,
+        headers: {
+          'X-RateLimit-Limit': String(rateLimit.limit),
+          'X-RateLimit-Remaining': String(rateLimit.remaining),
+          'X-RateLimit-Reset': String(rateLimit.reset)
+        }
+      }
+    )
+  }
+
   try {
     // Check for API key authentication
     const authHeader = request.headers.get('Authorization')

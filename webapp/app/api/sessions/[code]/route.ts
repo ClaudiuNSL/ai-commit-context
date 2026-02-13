@@ -159,23 +159,18 @@ export async function GET(
     }
 
     // Get linked commits - first get commit IDs, then fetch commits
-    const { data: commitLinks, error: linksError } = await supabase
+    const { data: commitLinks } = await supabase
       .from('session_commits')
       .select('commit_id')
       .eq('session_id', data.id)
 
-    console.log('Session ID:', data.id)
-    console.log('Commit links:', commitLinks, 'Error:', linksError)
-
     let commits: unknown[] = []
     if (commitLinks && commitLinks.length > 0) {
       const commitIds = commitLinks.map(link => link.commit_id)
-      console.log('Commit IDs:', commitIds)
-      const { data: commitData, error: commitsError } = await supabase
+      const { data: commitData } = await supabase
         .from('commits')
         .select('*')
         .in('id', commitIds)
-      console.log('Commits data:', commitData, 'Error:', commitsError)
       commits = commitData || []
     }
 

@@ -29,7 +29,6 @@ export async function GET(
     }
 
     const { code } = parsed.data
-    console.log('Poll endpoint called with code:', code)
 
     const supabase = getSupabaseAdmin()
 
@@ -38,8 +37,6 @@ export async function GET(
       .from('device_codes')
       .select('status, user_id, api_key, username, expires_at')
       .eq('code', code)
-
-    console.log('Poll query result:', { code, rows, error })
 
     const data = rows?.[0]
 

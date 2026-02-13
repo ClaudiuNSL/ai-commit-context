@@ -62,6 +62,14 @@ function DashboardContent() {
   const [creatingKey, setCreatingKey] = useState(false)
   const success = searchParams.get('success')
 
+  // Commit context: view conversations linked to a commit SHA
+  const [commitShaSearch, setCommitShaSearch] = useState('')
+  const [commitContextLoading, setCommitContextLoading] = useState(false)
+  const [commitContextResult, setCommitContextResult] = useState<{
+    commitSha: string
+    sessions: { shortCode: string; url: string; projectName: string; messageCount: number; startedAt: string | null }[]
+  } | null>(null)
+
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login')
@@ -78,7 +86,6 @@ function DashboardContent() {
 
   const loadSessions = async () => {
     if (!user?.id) {
-      console.log('No user id yet, skipping load')
       return
     }
 
@@ -87,13 +94,10 @@ function DashboardContent() {
 
     try {
       const userId = user.id
-      console.log('Loading sessions for user:', userId)
 
       // Use fetch API directly instead of Supabase client
       const response = await fetch(`/api/user-sessions?userId=${encodeURIComponent(userId)}`)
       const result = await response.json()
-
-      console.log('Sessions result:', result)
 
       if (result.error) {
         console.error('Failed to load sessions:', result.error)
@@ -138,6 +142,29 @@ function DashboardContent() {
     navigator.clipboard.writeText(code)
     setCopiedCode(code)
     setTimeout(() => setCopiedCode(null), 2000)
+  }
+
+  const loadCommitContext = async () => {
+    const sha = commitShaSearch.trim()
+    if (!sha) return
+    setCommitContextLoading(true)
+    setCommitContextResult(null)
+    try {
+      const res = await fetch(`/api/commits/${encodeURIComponent(sha)}/context`)
+      const data = await res.json()
+      if (data.error) {
+        setCommitContextResult({ commitSha: sha, sessions: [] })
+      } else {
+        setCommitContextResult({
+          commitSha: data.commitSha || sha,
+          sessions: data.sessions || [],
+        })
+      }
+    } catch {
+      setCommitContextResult({ commitSha: sha, sessions: [] })
+    } finally {
+      setCommitContextLoading(false)
+    }
   }
 
   const loadApiKeys = async () => {
@@ -357,6 +384,68 @@ function DashboardContent() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Commit context: view conversations linked to a commit */}
+        <div className="mb-8 bg-slate-800/50 rounded-lg border border-slate-700">
+          <div className="p-4 border-b border-slate-700">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <GitCommit className="w-5 h-5 text-indigo-400" />
+              Conversații AI după commit
+            </h2>
+            <p className="text-sm text-slate-400 mt-1">
+              Introdu SHA-ul unui commit pentru a vedea conversațiile Claude legate de el (după ce ai făcut <code className="bg-slate-700 px-1 rounded">acc init</code> și ai făcut commit cu hook-ul activ).
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                placeholder="ex: a1b2c3d sau hash complet"
+                value={commitShaSearch}
+                onChange={(e) => setCommitShaSearch(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && loadCommitContext()}
+                className="flex-1 min-w-[200px] rounded-lg border border-slate-600 bg-slate-900 px-4 py-2 text-sm text-white placeholder-slate-500 focus:border-sky-500 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={loadCommitContext}
+                disabled={commitContextLoading || !commitShaSearch.trim()}
+                className="inline-flex items-center gap-2 rounded-lg bg-sky-500 px-4 py-2 text-sm font-medium text-white hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {commitContextLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                Caută
+              </button>
+            </div>
+          </div>
+          {commitContextResult && (
+            <div className="p-4">
+              {commitContextResult.sessions.length === 0 ? (
+                <p className="text-slate-400 text-sm">
+                  Nu există conversații legate de commit <code className="bg-slate-700 px-1 rounded">{commitContextResult.commitSha}</code>. Asigură-te că ai rulat <code className="bg-slate-700 px-1 rounded">acc init</code>, ai făcut upload la sesiune și ai făcut commit (hook-ul adaugă legătura).
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {commitContextResult.sessions.map((s) => (
+                    <li key={s.shortCode} className="flex items-center justify-between rounded-lg bg-slate-900/50 p-3">
+                      <div>
+                        <span className="font-mono text-sky-400">{s.shortCode}</span>
+                        {s.projectName && <span className="text-slate-400 ml-2">— {s.projectName}</span>}
+                        <span className="text-slate-500 text-sm ml-2">({s.messageCount} mesaje)</span>
+                      </div>
+                      <Link
+                        href={s.url.startsWith('http') ? s.url : `/s/${s.shortCode}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-sm text-sky-400 hover:text-sky-300"
+                      >
+                        Deschide conversația
+                        <ExternalLink className="w-4 h-4" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Sessions list */}

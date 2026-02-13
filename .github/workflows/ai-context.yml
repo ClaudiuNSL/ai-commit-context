@@ -26,7 +26,8 @@ jobs:
         uses: ./github-action
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          api-url: 'https://ai-commit-context.vercel.app'
+          api-url: 'https://aicommitcontext.dev'
+          set-status: 'true'
 
   # Link commits to sessions on push to main
   link-commits:
@@ -50,7 +51,7 @@ jobs:
             if [ -n "$context_id" ]; then
               echo "Found AI-Context-ID: $context_id in commit ${sha:0:7}"
 
-              curl -s -X POST "https://ai-commit-context.vercel.app/api/sessions/$context_id/commits" \
+              curl -s -X POST "https://aicommitcontext.dev/api/sessions/$context_id/commits" \
                 -H "Content-Type: application/json" \
                 -d "{\"sha\": \"$sha\", \"repoOwner\": \"${{ github.repository_owner }}\", \"repoName\": \"${{ github.event.repository.name }}\"}" \
                 && echo " -> Linked successfully" \

@@ -1,12 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { linkCommitSchema, sessionCodeParamSchema, parseBody } from '@/lib/validations'
+import { checkRateLimit, getClientIp, RATE_LIMITS } from '@/lib/rate-limit'
 
 // POST - Link commit to session
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
+  // Rate limiting
+  const clientIp = getClientIp(request)
+  const rateLimit = checkRateLimit(`commit-link:${clientIp}`, RATE_LIMITS.commitLink)
+
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Try again later.' },
+      { status: 429 }
+    )
+  }
+
   const rawParams = await params
   const parsedParams = parseBody(sessionCodeParamSchema, rawParams)
 
@@ -89,16 +101,12 @@ export async function POST(
       .maybeSingle()
 
     if (!existingLink) {
-      const { data: insertedLink, error: linkError } = await supabase
+      const { error: linkError } = await supabase
         .from('session_commits')
         .insert({
           session_id: session.id,
           commit_id: commitId
         })
-        .select()
-        .single()
-
-      console.log('Inserted link:', insertedLink, 'Error:', linkError)
 
       if (linkError) {
         console.error('Error linking commit:', linkError)

@@ -1,5 +1,12 @@
 import { z } from 'zod'
 
+// Git commit SHA validation (7-40 hex characters)
+const commitShaRegex = /^[a-f0-9]{7,40}$/i
+const commitShaValidator = z.string()
+  .min(7, 'SHA must be at least 7 characters')
+  .max(40, 'SHA must be at most 40 characters')
+  .regex(commitShaRegex, 'SHA must be a valid hexadecimal string')
+
 // Session upload schema
 export const uploadSessionSchema = z.object({
   sessionId: z.string().min(1, 'sessionId is required'),
@@ -22,11 +29,11 @@ export const uploadSessionSchema = z.object({
 
 // Commit link schema
 export const linkCommitSchema = z.object({
-  sha: z.string().min(1, 'sha is required'),
-  repoUrl: z.string().optional(),
-  repoOwner: z.string().optional(),
-  repoName: z.string().optional(),
-  message: z.string().optional()
+  sha: commitShaValidator,
+  repoUrl: z.string().url().optional().or(z.literal('')),
+  repoOwner: z.string().max(100).optional(),
+  repoName: z.string().max(100).optional(),
+  message: z.string().max(500).optional()
 })
 
 // API key schemas
@@ -57,7 +64,7 @@ export const sessionCodeParamSchema = z.object({
 })
 
 export const commitShaParamSchema = z.object({
-  sha: z.string().min(1, 'Commit SHA is required')
+  sha: commitShaValidator
 })
 
 // Helper to parse and return validation errors

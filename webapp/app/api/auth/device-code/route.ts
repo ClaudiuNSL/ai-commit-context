@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import crypto from 'crypto'
 import { codeQuerySchema, parseQuery } from '@/lib/validations'
+import { checkRateLimit, getClientIp, RATE_LIMITS } from '@/lib/rate-limit'
 
 function generateDeviceCode(): string {
   return crypto.randomBytes(32).toString('base64url')
@@ -18,7 +19,18 @@ function generateUserCode(): string {
 }
 
 // POST - Create a new device code for CLI authentication
-export async function POST(_request: NextRequest) {
+export async function POST(request: NextRequest) {
+  // Rate limiting
+  const clientIp = getClientIp(request)
+  const rateLimit = checkRateLimit(`device-code:${clientIp}`, RATE_LIMITS.deviceCode)
+
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Try again later.' },
+      { status: 429 }
+    )
+  }
+
   try {
     const supabase = getSupabaseAdmin()
 
