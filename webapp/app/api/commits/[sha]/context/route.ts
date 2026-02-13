@@ -38,7 +38,6 @@ export async function GET(
       .select('sessions(*)')
       .in('commit_id', commitIds)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sessions = links?.map((link: any) => ({
       id: link.sessions.id,
       shortCode: link.sessions.short_code,

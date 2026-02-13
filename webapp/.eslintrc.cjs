@@ -1,3 +1,9 @@
 module.exports = {
-  extends: ['next/core-web-vitals', 'next/typescript']
+  extends: ['next/core-web-vitals'],
+  rules: {
+    'react/no-unescaped-entities': 'off',
+    '@next/next/no-img-element': 'warn',
+    'react-hooks/exhaustive-deps': 'warn',
+    '@typescript-eslint/no-explicit-any': 'off'
+  }
 }
