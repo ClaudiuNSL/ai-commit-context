@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { checkCsrf } from '@/lib/csrf'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // CSRF protection for API mutation endpoints
   if (request.nextUrl.pathname.startsWith('/api/')) {
     const csrfError = checkCsrf(request)
