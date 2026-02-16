@@ -247,9 +247,9 @@ export function getActiveSession(): Session | null {
   const cwd = process.cwd();
 
   // Consider a session "active" if:
-  // 1. It was updated within the last 15 minutes
+  // 1. It was updated within the last 24 hours
   // 2. It matches the current working directory
-  const ACTIVE_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
+  const ACTIVE_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24 hours
   const now = Date.now();
 
   const activeSessions = Object.values(db.sessions)
