@@ -23,6 +23,7 @@ export async function parseSessionFile(filePath: string): Promise<ParsedSession 
   const messages: ClaudeMessage[] = [];
   const filesModified: SessionFile[] = [];
   let sessionId = '';
+  let projectCwd = '';
   let startedAt: Date | null = null;
   let endedAt: Date | null = null;
 
@@ -41,6 +42,11 @@ export async function parseSessionFile(filePath: string): Promise<ParsedSession 
       // Extract session ID from first message
       if (!sessionId && entry.uuid) {
         sessionId = entry.uuid;
+      }
+
+      // Extract project cwd from user messages
+      if (!projectCwd && entry.cwd) {
+        projectCwd = entry.cwd;
       }
 
       // Track timestamps
@@ -87,8 +93,8 @@ export async function parseSessionFile(filePath: string): Promise<ParsedSession 
     return null;
   }
 
-  // Extract project path from file location
-  const projectPath = path.dirname(path.dirname(filePath));
+  // Use cwd from session, fallback to file location
+  const projectPath = projectCwd || path.dirname(path.dirname(filePath));
 
   return {
     id: sessionId,

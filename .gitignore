@@ -1,8 +1,9 @@
 # Dependencies
 node_modules/
 
-# Build output
+# Build output (but keep github-action/dist for Action to work from other repos)
 dist/
+!github-action/dist/
 
 # IDE
 .vscode/
@@ -22,6 +23,8 @@ npm-debug.log*
 .env
 .env.local
 .env.*.local
+.env.production
+webapp/.env.production
 
 # Test coverage
 coverage/

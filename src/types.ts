@@ -99,7 +99,7 @@ export interface Config {
 export const DEFAULT_CONFIG: Config = {
   auth: {
     token: null,
-    apiUrl: 'https://aicommitcontext.dev/api',
+    apiUrl: 'https://aicommitcontext.dev',
   },
   preferences: {
     autoUpload: true,

@@ -3,13 +3,16 @@ import { nanoid } from 'nanoid'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { verifyApiKey } from '@/lib/api-auth'
 import { uploadSessionSchema, parseBody } from '@/lib/validations'
-import { checkRateLimit, getClientIp, RATE_LIMITS } from '@/lib/rate-limit'
+import { checkRateLimitAsync, getClientIp, RATE_LIMITS } from '@/lib/rate-limit'
+import { logger } from '@/lib/logger'
+
+const log = logger.child({ route: 'sessions' })
 
 // POST - Upload session (from CLI)
 export async function POST(request: NextRequest) {
   // Rate limiting
   const clientIp = getClientIp(request)
-  const rateLimit = checkRateLimit(`session-upload:${clientIp}`, RATE_LIMITS.sessionUpload)
+  const rateLimit = await checkRateLimitAsync(`session-upload:${clientIp}`, RATE_LIMITS.sessionUpload, 'sessionUpload')
 
   if (!rateLimit.success) {
     return NextResponse.json(
@@ -83,8 +86,8 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Supabase error:', error)
-      return NextResponse.json({ error: 'Failed to upload session', details: error.message }, { status: 500 })
+      log.error('Supabase error', error, { code: error.code })
+      return NextResponse.json({ error: 'Failed to upload session' }, { status: 500 })
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
@@ -95,9 +98,8 @@ export async function POST(request: NextRequest) {
       url: `${baseUrl}/s/${data.short_code}`
     })
   } catch (error) {
-    console.error('Upload error:', error)
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    return NextResponse.json({ error: 'Failed to upload session', details: message }, { status: 500 })
+    log.error('Upload error', error)
+    return NextResponse.json({ error: 'Failed to upload session' }, { status: 500 })
   }
 }
 
@@ -136,7 +138,7 @@ export async function GET() {
       })) || []
     })
   } catch (error) {
-    console.error('Error listing sessions:', error)
+    log.error('Error listing sessions', error)
     return NextResponse.json({ error: 'Failed to list sessions' }, { status: 500 })
   }
 }

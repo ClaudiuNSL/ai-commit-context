@@ -103,8 +103,10 @@ CREATE POLICY "Commits are viewable by everyone"
     ON public.commits FOR SELECT
     USING (true);
 
-CREATE POLICY "Anyone can insert commits"
+-- Only authenticated users or service role can insert commits
+CREATE POLICY "Authenticated users can insert commits"
     ON public.commits FOR INSERT
+    TO authenticated
     WITH CHECK (true);
 
 -- ============================================================================
@@ -126,9 +128,19 @@ CREATE POLICY "Session commits are viewable by everyone"
     ON public.session_commits FOR SELECT
     USING (true);
 
-CREATE POLICY "Anyone can link commits"
+-- Only session owners or authenticated users can link commits
+-- This prevents anonymous users from spamming links
+CREATE POLICY "Authenticated users can link commits"
     ON public.session_commits FOR INSERT
-    WITH CHECK (true);
+    TO authenticated
+    WITH CHECK (
+        -- Verify the session exists and optionally belongs to the user
+        EXISTS (
+            SELECT 1 FROM public.sessions
+            WHERE id = session_commits.session_id
+            AND (user_id = auth.uid() OR user_id IS NULL)
+        )
+    );
 
 -- ============================================================================
 -- API_KEYS TABLE (for CLI authentication)

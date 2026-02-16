@@ -260,3 +260,49 @@ export function getStagedFiles(repoPath?: string): string[] {
     return [];
   }
 }
+
+/**
+ * Get remote origin URL (https form preferred for API)
+ */
+export function getRepoUrl(repoPath?: string): string {
+  const gitRoot = repoPath || findGitRoot();
+  if (!gitRoot) return '';
+
+  try {
+    const url = execSync('git config --get remote.origin.url', {
+      cwd: gitRoot,
+      encoding: 'utf-8',
+    }).trim();
+
+    // Convert SSH URLs to HTTPS for consistency
+    // git@github.com:user/repo.git -> https://github.com/user/repo
+    if (url.startsWith('git@')) {
+      return url
+        .replace(/^git@/, 'https://')
+        .replace(/\.com:/, '.com/')
+        .replace(/\.git$/, '');
+    }
+
+    // Remove .git suffix from HTTPS URLs
+    return url.replace(/\.git$/, '');
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Get the last commit message
+ */
+export function getLastCommitMessage(repoPath?: string): string {
+  const gitRoot = repoPath || findGitRoot();
+  if (!gitRoot) return '';
+
+  try {
+    return execSync('git log -1 --pretty=%B', {
+      cwd: gitRoot,
+      encoding: 'utf-8',
+    }).trim();
+  } catch {
+    return '';
+  }
+}

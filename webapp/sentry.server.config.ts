@@ -9,7 +9,10 @@ Sentry.init({
   // Only enable in production
   enabled: process.env.NODE_ENV === 'production' && !!process.env.NEXT_PUBLIC_SENTRY_DSN,
 
-  // Adjust this value in production
+  // Capture 100% of errors
+  sampleRate: 1.0,
+
+  // Sample 10% of transactions for performance monitoring
   tracesSampleRate: 0.1,
 
   debug: false,

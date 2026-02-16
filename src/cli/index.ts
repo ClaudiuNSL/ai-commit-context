@@ -21,6 +21,8 @@ import {
   linkSessionToCommit,
   checkStagedFilesMatch,
   findGitRoot,
+  getRepoUrl,
+  getLastCommitMessage,
 } from '../hooks/index.js';
 import {
   loadConfig,
@@ -30,7 +32,7 @@ import {
   shortId,
   getClaudeProjectsPath,
 } from '../utils/index.js';
-import { uploadSession } from '../upload/index.js';
+import { uploadSession, linkCommitRemote } from '../upload/index.js';
 import {
   startDeviceFlow,
   loadAuth,
@@ -40,12 +42,12 @@ import {
 
 const program = new Command();
 
-const API_BASE_URL = process.env.ACC_API_URL || 'https://ai-commit-context.vercel.app';
+const API_BASE_URL = process.env.ACC_API_URL || 'https://aicommitcontext.dev';
 
 program
   .name('acc')
   .description('AI Commit Context - Connect Claude Code conversations to GitHub commits')
-  .version('0.1.5');
+  .version('0.1.6');
 
 // =============================================================================
 // INIT COMMAND
@@ -295,15 +297,32 @@ sessions
 
 sessions
   .command('link <sessionId> <commitSha>')
-  .description('Link a session to a commit')
-  .action((sessionId, commitSha) => {
+  .description('Link a session to a commit (local + server)')
+  .action(async (sessionId, commitSha) => {
     const result = linkSessionToCommit(sessionId, commitSha);
 
-    if (result.success) {
-      console.log(chalk.green('✓'), result.message);
-    } else {
+    if (!result.success) {
       console.log(chalk.red('✗'), result.message);
       process.exit(1);
+    }
+
+    console.log(chalk.green('✓'), result.message);
+
+    // Also link on server so conversations show up by commit
+    const session = getSession(sessionId);
+    if (session?.uploadUrl) {
+      const match = session.uploadUrl.match(/\/s\/([a-zA-Z0-9_-]+)/);
+      const shortCode = match ? match[1] : null;
+      if (shortCode) {
+        const repoUrl = getRepoUrl();
+        const message = getLastCommitMessage();
+        const remote = await linkCommitRemote(shortCode, commitSha, repoUrl, message);
+        if (remote.success) {
+          console.log(chalk.green('✓'), 'Linked on server; view at Dashboard → Commit context');
+        } else {
+          console.log(chalk.yellow('⚠'), 'Server link failed:', remote.error);
+        }
+      }
     }
   });
 

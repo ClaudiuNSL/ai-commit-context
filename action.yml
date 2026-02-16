@@ -1,0 +1,7 @@
+# Root action.yml so other repos can use: owner/ai-commit-context@main
+# The actual implementation is in github-action/
+name: 'AI Commit Context'
+description: 'Annotate PRs with AI conversation links from Claude Code sessions'
+runs:
+  using: 'node20'
+  main: 'github-action/dist/index.js'

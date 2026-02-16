@@ -2,18 +2,33 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import Stripe from 'stripe'
+import { logger } from '@/lib/logger'
+
+const log = logger.child({ route: 'stripe/webhook' })
 
 export async function POST(request: NextRequest) {
+  // Return 503 if Stripe is not configured (payments disabled)
+  const stripe = getStripe()
+  if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) {
+    return NextResponse.json(
+      { error: 'Payment system not configured' },
+      { status: 503 }
+    )
+  }
+
   const body = await request.text()
-  const signature = request.headers.get('stripe-signature')!
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
+  const signature = request.headers.get('stripe-signature')
+  if (!signature) {
+    return NextResponse.json({ error: 'Missing signature' }, { status: 400 })
+  }
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
   let event: Stripe.Event
 
   try {
-    event = getStripe().webhooks.constructEvent(body, signature, webhookSecret)
-  } catch (err: any) {
-    console.error('Webhook signature verification failed:', err.message)
+    event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
+  } catch (err) {
+    log.warn('Webhook signature verification failed', { error: err instanceof Error ? err.message : 'Unknown' })
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
@@ -111,12 +126,12 @@ export async function POST(request: NextRequest) {
       }
 
       default:
-        console.log(`Unhandled event type: ${event.type}`)
+        log.debug('Unhandled event type', { type: event.type })
     }
 
     return NextResponse.json({ received: true })
-  } catch (error: any) {
-    console.error('Webhook error:', error)
+  } catch (error) {
+    log.error('Webhook error', error)
     return NextResponse.json(
       { error: 'Webhook handler failed' },
       { status: 500 }

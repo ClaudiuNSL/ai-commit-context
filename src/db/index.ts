@@ -244,10 +244,31 @@ export function getCommitSessions(commitSha: string): Session[] {
 
 export function getActiveSession(): Session | null {
   const db = loadDb();
+  const cwd = process.cwd();
+
+  // Consider a session "active" if:
+  // 1. It was updated within the last 15 minutes
+  // 2. It matches the current working directory
+  const ACTIVE_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
+  const now = Date.now();
 
   const activeSessions = Object.values(db.sessions)
-    .filter(s => s.endedAt === null)
-    .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
+    .filter(s => {
+      // Check if session was recently active
+      const lastActivity = s.endedAt ? new Date(s.endedAt).getTime() : new Date(s.startedAt).getTime();
+      const isRecent = (now - lastActivity) < ACTIVE_THRESHOLD_MS;
+
+      // Check if session matches current directory
+      const matchesCwd = cwd.startsWith(s.projectPath) || s.projectPath.startsWith(cwd);
+
+      return isRecent && matchesCwd;
+    })
+    .sort((a, b) => {
+      // Sort by most recent activity
+      const aTime = a.endedAt ? new Date(a.endedAt).getTime() : new Date(a.startedAt).getTime();
+      const bTime = b.endedAt ? new Date(b.endedAt).getTime() : new Date(b.startedAt).getTime();
+      return bTime - aTime;
+    });
 
   if (activeSessions.length === 0) return null;
 
@@ -257,7 +278,7 @@ export function getActiveSession(): Session | null {
     projectPath: record.projectPath,
     projectName: record.projectName,
     startedAt: new Date(record.startedAt),
-    endedAt: null,
+    endedAt: record.endedAt ? new Date(record.endedAt) : null,
     messageCount: record.messageCount,
     filesModified: getSessionFiles(record.id).map(f => f.filePath),
     uploaded: record.uploaded,

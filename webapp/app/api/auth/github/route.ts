@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import crypto from 'crypto'
 import { z } from 'zod'
+import { logger } from '@/lib/logger'
+
+const log = logger.child({ route: 'auth/github' })
 
 const githubCallbackSchema = z.object({
   code: z.string().optional(),
@@ -50,7 +53,7 @@ export async function GET(request: NextRequest) {
 
   // Handle OAuth errors
   if (error) {
-    console.error('GitHub OAuth error:', error, errorDescription)
+    log.warn('GitHub OAuth error', { error, errorDescription })
     return NextResponse.redirect(
       `${baseUrl}/auth/cli?error=${encodeURIComponent(errorDescription || error)}`
     )
@@ -80,9 +83,9 @@ export async function GET(request: NextRequest) {
     const tokenData: GitHubTokenResponse = await tokenResponse.json()
 
     if (tokenData.error) {
-      console.error('GitHub token exchange error:', tokenData.error, tokenData.error_description)
+      log.error('GitHub token exchange error', null, { error: tokenData.error, description: tokenData.error_description })
       return NextResponse.redirect(
-        `${baseUrl}/auth/cli?error=${encodeURIComponent(tokenData.error_description || tokenData.error)}`
+        `${baseUrl}/auth/cli?error=${encodeURIComponent('Authentication failed')}`
       )
     }
 
@@ -96,7 +99,7 @@ export async function GET(request: NextRequest) {
     })
 
     if (!userResponse.ok) {
-      console.error('GitHub user fetch error:', userResponse.status, await userResponse.text())
+      log.error('GitHub user fetch error', null, { status: userResponse.status })
       return NextResponse.redirect(
         `${baseUrl}/auth/cli?error=${encodeURIComponent('Failed to fetch GitHub user info')}`
       )
@@ -119,7 +122,7 @@ export async function GET(request: NextRequest) {
         .eq('code', state)
 
       if (!existingCode || existingCode.length === 0) {
-        console.error('Device code not found in database')
+        log.warn('Device code not found in database', { state })
         return NextResponse.redirect(
           `${baseUrl}/auth/cli?error=${encodeURIComponent('Device code not found')}`
         )
@@ -139,14 +142,14 @@ export async function GET(request: NextRequest) {
         .select()
 
       if (updateError) {
-        console.error('Device code update error')
+        log.error('Device code update error', updateError)
         return NextResponse.redirect(
           `${baseUrl}/auth/cli?error=${encodeURIComponent('Failed to complete authentication')}`
         )
       }
 
       if (!updateData || updateData.length === 0) {
-        console.error('No device code found:', state)
+        log.warn('No device code found after update', { state })
         return NextResponse.redirect(
           `${baseUrl}/auth/cli?error=${encodeURIComponent('Device code not found or expired. Please try again.')}`
         )
@@ -163,10 +166,9 @@ export async function GET(request: NextRequest) {
       `${baseUrl}/auth/cli?success=true&username=${encodeURIComponent(githubUser.login)}`
     )
   } catch (error) {
-    console.error('GitHub OAuth callback error:', error)
-    const message = error instanceof Error ? error.message : 'Unknown error'
+    log.error('GitHub OAuth callback error', error)
     return NextResponse.redirect(
-      `${baseUrl}/auth/cli?error=${encodeURIComponent(message)}`
+      `${baseUrl}/auth/cli?error=${encodeURIComponent('Authentication failed')}`
     )
   }
 }
