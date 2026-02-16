@@ -238,8 +238,8 @@ export default function SessionViewPage() {
     )
   }
 
-  // Use messages array - cleanMessages is the same as messages now
-  const displayMessages = session.messages as CleanMessage[]
+  // Use cleanMessages if available, fallback to messages
+  const displayMessages = (session as unknown as { cleanMessages?: CleanMessage[] }).cleanMessages || session.messages as CleanMessage[]
 
   return (
     <div className="min-h-screen">
